@@ -1,0 +1,25 @@
+Package: varycoef
+Type: Package
+Title: varycoef: Varying Coefficients
+Version: 0.1.0
+Authors@R: as.person(c(
+    "Jakob Dambon <jakob.dambon@math.uzh.ch> [aut, cre]", 
+    "Fabio Sigrist [ctb]", 
+    "Reinhard Furrer [ctb]"
+  ))
+Imports:
+  spam,
+  fields, 
+  methods
+Suggests:
+  sp,
+  RandomFields,
+  tmap,
+  knitr,
+  rmarkdown
+Description: Gives MLE Method to estimate and predict SVC Models.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr

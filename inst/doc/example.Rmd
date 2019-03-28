@@ -1,0 +1,193 @@
+---
+title: "First Example"
+author: "Jakob A. Dambon"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{First Example}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(varycoef)
+```
+
+## Introduction
+
+The package `varycoef` contains methods to model and estimate varying coefficients. In its current version `r packageVersion("varycoef")` it supports:
+
+- only *spatially* varying coefficient (SVC)
+
+- only a MLE approach to model SVC and to give predictions of SVC. 
+
+
+### Spatially Varying Coefficient Models
+
+In our case, an SVC model is defined by
+
+
+$$y(s) = x^{(1)}(s)\beta_1(s) + ... + x^{(p)}(s)\beta_p(s) + \epsilon(s)$$
+
+with the coefficients represented by Gaussian random fields $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_k^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect with variance $\tau^2$. 
+
+
+In its current version `r packageVersion("varycoef")` `varycoef` supports only exponential covariance functions, i.e. $\phi_{\rho}(s_k, s_l) = \exp\left(\frac{\|s_k - s_l\|}{\rho}\right)$.
+
+
+## Example
+
+### Create Data 
+
+To give a simple example, we start by sampling artifical data. So define an SVC model as given above:
+
+
+```{r define SVC}
+# number of SVC
+p <- 3
+
+(pars <- data.frame(mu = rep(0, p), 
+                    var = c(0.1, 0.2, 0.3), 
+                    scale = c(0.3, 0.1, 0.2)))
+nugget.var <- 0.05
+```
+
+We then sample from a regular grid in the unit square:
+
+```{r sample SVC, fig.width=7, fig.height=7}
+library(RandomFields)
+library(sp)
+m <- 20
+
+# number of observations
+n <- m^2
+
+# regular grid locations
+locs <- expand.grid(x = seq(0, 1, length.out = m), 
+                    y = seq(0, 1, length.out = m))
+
+set.seed(123)
+
+# SVC model
+model <- apply(pars, 1, function(x) {
+  RFsimulate(RMexp(x["var"], x["scale"]), 
+             x = locs[, "x"], y = locs[, "y"])
+})
+
+model[[p+1]] <- RFsimulate(RMnugget(var = nugget.var), 
+                           x = locs[, "x"], y = locs[, "y"])
+sp.SVC <- Reduce(cbind, model)
+sp.SVC <- SpatialPointsDataFrame(coords = sp.SVC@coords, 
+                                 data = sp.SVC@data)
+colnames(sp.SVC@data) <- c(paste0("SVC_", 1:p), "nugget")
+
+spplot(sp.SVC, colorkey = TRUE)
+```
+
+
+
+We further need some covariates which we sample from a standard normal. In order to model an intercept, we set $x^{(1)} = 1$:
+
+```{r sample covariates}
+X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
+head(X)
+```
+
+We compute the response $y$:
+
+```{r compute response}
+y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
+```
+
+
+### MLE of SVC Model
+
+To run an MLE, we need initial values for all variances and the scales as well as the means. A good starting point for the means are the coefficients of an OLS, i.e.:
+
+```{r mean initials}
+(mu.init <- coef(lm(y~.-1, data = data.frame(y = y, X = X))))
+```
+
+
+For the variance, we take the estimated variance of the OLS method, i.e 
+
+```{r variance initials}
+(var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
+```
+
+For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any depandency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an inital scale of a third or fourth the maximum distance. So in our case, we take
+
+
+```{r scale initials}
+scale.init <- 0.4
+```
+
+
+The vector of initial values is then:
+
+
+```{r joint initials}
+init <- c(rep(c(scale.init, var.init), p), # GRFs scales and variances
+          var.init,                        # nugget variance
+          mu.init)                         # means
+
+
+
+lower <- c(rep(0, 2*p+1), rep(-Inf, p))
+```
+
+
+
+
+
+We can now start the MLE.
+
+
+```{r SVC MLE}
+fit <- SVC_mle(y = y, X = X, locs = locs, init = init, 
+               lower = lower)
+
+class(fit)
+
+# comparison of estimated and true parameters
+rbind(fit$optim.output$par, 
+      c(pars[, "scale"], pars[, "var"], nugget.var, pars[, "mu"]))
+```
+
+
+Now, we can use our `fit` object to make predicitions:
+
+
+```{r make predictions}
+# calling predictions without specifying new locations (newlocs) or 
+# new covariates (newX) gives estimates of SVC only at the training location.
+pred.SVC <- predict(fit)
+```
+
+
+Since we know the true SVC, we can compute the error in prediction and compare it the esimates.
+
+```{r visualization of prediction, fig.width=7, fig.height=7}
+colnames(pred.SVC)[1:p] <- paste0("pred.",colnames(pred.SVC)[1:p])
+coordinates(pred.SVC) <- ~loc_x+loc_y
+all.SVC <- cbind(pred.SVC, sp.SVC[, 1:3])
+
+# compute errors
+all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
+all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
+all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
+
+
+spplot(all.SVC[, paste0(rep(c("pred.", "err."), each = p), 
+                        "SVC_", 1:p)], colorkey = TRUE)
+```
+
+
+The errors do not look that good in our first example, but this has something to do with the sample size. If we increase it `m` from `r m` to 40, the picture changes:
+
+
+```{r n1600 example, fig.width=7, fig.height=7, echo = FALSE}
+knitr::include_graphics("figures/SVCs_result_n1600_p3.png")
+```
+
+
