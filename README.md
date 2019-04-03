@@ -21,5 +21,5 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 | 0.2.2    | enable scaling | TBD |
 | 0.3.0    | add summary, printing and plotting functions for `SVC_mle` objects | TBD |
 | 0.4.0    | parallelization using `optim.parallel` | TBD |
-| 0.5.0    | SVC INLA functinality | TBD |
+| 0.5.0    | SVC INLA | TBD |
 | 0.6.0    | preparing for CRAN release | TBD |
