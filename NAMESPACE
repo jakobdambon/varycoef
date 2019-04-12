@@ -2,6 +2,7 @@
 
 S3method(predict,SVC_mle)
 export(SVC_mle)
+export(SVC_mle.control)
 import(methods)
 import(spam)
 importFrom(fields,rdist)

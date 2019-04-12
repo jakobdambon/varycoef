@@ -1,14 +1,17 @@
 ---
-title: "First Example"
+title: "Manual"
 author: "Jakob A. Dambon"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{First Example}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+  %\usepackage[utf8]{inputenc}
 ---
 
 ```{r setup, include=FALSE}
+rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(varycoef)
 ```
@@ -19,30 +22,44 @@ The package `varycoef` contains methods to model and estimate varying coefficien
 
 - only *spatially* varying coefficient (SVC)
 
-- only a MLE approach to model SVC and to give predictions of SVC. 
+- only an MLE approach to model SVC and to give predictions. 
 
 
 ### Spatially Varying Coefficient Models
 
-In our case, an SVC model is defined by
+We define a *full SVC model* as
 
 
 $$y(s) = x^{(1)}(s)\beta_1(s) + ... + x^{(p)}(s)\beta_p(s) + \epsilon(s)$$
 
-with the coefficients represented by Gaussian random fields $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_k^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect with variance $\tau^2$. 
+with the coefficients represented by Gaussian random fields (GRF) $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_k^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect with variance $\tau^2$. 
+
+However, there are some cases, where the assumption of a full SVC model is not applicable. We want to give options for covariates w.r.t.:
+
+1. *mixed SVC*, i.e. as above with its respective mean (fixed effect) and random effect described by its GRF.
+2. *fixed effect*, i.e. without an GRF modelling its spatial structure.
+3. *mean-zero SVC*, i.e. only a zeo-mean random effect modelling the spatial structure. 
+
+That is why we generalize the model above. First, note that we can write it in matrix form as
+
+$$\textbf y(\textbf s) = \textbf X  \beta(\textbf s) + \epsilon( \textbf s)$$
+
+where $\textbf X$ is our model matrix. Then we can write down the model devided into an fixed effect part and a random effect part:
 
 
-In its current version `r packageVersion("varycoef")` `varycoef` supports only exponential covariance functions, i.e. $\phi_{\rho}(s_k, s_l) = \exp\left(\frac{\|s_k - s_l\|}{\rho}\right)$.
+$$\textbf y(\textbf s) = \textbf X  \mu + \textbf W  \tilde \beta(\textbf s) + \epsilon( \textbf s)$$
+
+where $\tilde{\beta}$ is a mean-zero GRF. Note that both model are the same if $\textbf X  = \textbf W$. Thus, we can specify options 1 to 3 from above by in- or excluding columns of $\textbf X$ or $\textbf W$.
 
 
-## Example
 
-### Create Data 
-
-To give a simple example, we start by sampling artifical data. So define an SVC model as given above:
+### Example
 
 
-```{r define SVC}
+To give a simple example, we start by sampling artifical data. So define an *full SVC model* as given above and sample from a regular grid using a help function:
+
+
+```{r define and sample SVC, warning=FALSE, fig.width=7, fig.height=7, message=FALSE}
 # number of SVC
 p <- 3
 
@@ -50,36 +67,18 @@ p <- 3
                     var = c(0.1, 0.2, 0.3), 
                     scale = c(0.3, 0.1, 0.2)))
 nugget.var <- 0.05
-```
 
-We then sample from a regular grid in the unit square:
+# sqrt of total number of observations
 
-```{r sample SVC, fig.width=7, fig.height=7}
-library(RandomFields)
-library(sp)
 m <- 20
 
-# number of observations
-n <- m^2
 
-# regular grid locations
-locs <- expand.grid(x = seq(0, 1, length.out = m), 
-                    y = seq(0, 1, length.out = m))
+library(RandomFields)
+library(sp)
 
-set.seed(123)
-
-# SVC model
-model <- apply(pars, 1, function(x) {
-  RFsimulate(RMexp(x["var"], x["scale"]), 
-             x = locs[, "x"], y = locs[, "y"])
-})
-
-model[[p+1]] <- RFsimulate(RMnugget(var = nugget.var), 
-                           x = locs[, "x"], y = locs[, "y"])
-sp.SVC <- Reduce(cbind, model)
-sp.SVC <- SpatialPointsDataFrame(coords = sp.SVC@coords, 
-                                 data = sp.SVC@data)
-colnames(sp.SVC@data) <- c(paste0("SVC_", 1:p), "nugget")
+sp.SVC <- varycoef:::fullSVC_reggrid(m = m, p = p, 
+                                     pars = list(pars = pars, 
+                                                 nugget.var = nugget.var))
 
 spplot(sp.SVC, colorkey = TRUE)
 ```
@@ -89,6 +88,8 @@ spplot(sp.SVC, colorkey = TRUE)
 We further need some covariates which we sample from a standard normal. In order to model an intercept, we set $x^{(1)} = 1$:
 
 ```{r sample covariates}
+n <- m^2
+
 X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
 head(X)
 ```
@@ -100,9 +101,45 @@ y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 ```
 
 
-### MLE of SVC Model
+## MLE in `varycoef`
 
-To run an MLE, we need initial values for all variances and the scales as well as the means. A good starting point for the means are the coefficients of an OLS, i.e.:
+
+The main function of this package is `SVC_mle`. Its function call starts the MLE but it requires some preperation and settings of control parameters. We go through each argument of the `SVC_mle` function and its control parameter `SVC_mle.control`. 
+
+### The Function `SVC_mle`
+
+As one might see in the help file of the `SVC_mle` function, it has 3 mandatory arguments: `y`, the response; `X`, the data matrix and `locs`, the locations. If we do not change `W`, i.e. `W = NULL`, then we use `W = X` and are in the case of a full SVC. We will give examples for different kinds of models. 
+
+### Control Parameters
+
+As for the control parameters for `SVC_mle`, we go through them as they are implemented in the current version of `varycoef`. By calling `SVC_mle.control`, we create an list with all needed arguments to start a simple `SVC_mle`. 
+
+
+```{r contorl parameters}
+control <- SVC_mle.control()
+str(control)
+```
+
+#### Covariance Function
+
+Here we define the covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$. In its current version `r packageVersion("varycoef")`, `varycoef` supports only exponential covariance functions, i.e. $\phi_{\rho}(s_k, s_l) = \exp\left(\frac{\|s_k - s_l\|}{\rho}\right)$.
+
+
+#### Tapering
+
+To be implemented.
+
+#### Parallelization of Optimization
+
+To be implemented.
+
+#### Standardizing of Data
+
+To be implemented.
+
+#### Initial Values
+
+To run an MLE, we need initial values for all variances and the scales as well as the means. A good starting point for the means are the estimated coefficients of an OLS, i.e.:
 
 ```{r mean initials}
 (mu.init <- coef(lm(y~.-1, data = data.frame(y = y, X = X))))
@@ -115,7 +152,7 @@ For the variance, we take the estimated variance of the OLS method, i.e
 (var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
 ```
 
-For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any depandency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an inital scale of a third or fourth the maximum distance. So in our case, we take
+For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an initial scale of a third or fourth the maximum distance. So in our case, we take
 
 
 ```{r scale initials}
@@ -130,22 +167,31 @@ The vector of initial values is then:
 init <- c(rep(c(scale.init, var.init), p), # GRFs scales and variances
           var.init,                        # nugget variance
           mu.init)                         # means
-
-
-
-lower <- c(rep(0, 2*p+1), rep(-Inf, p))
 ```
 
 
+One can either overwrite the default initial value (`control$init`) or call `SVC_mle.control` with corresponding arguments:
 
+```{r overwrite initials}
+# default
+control$init
 
+# overwrite
+control$init <- init
+
+# create new
+control <- SVC_mle.control(init = init)
+```
+
+**The default values gives initial values of $0.3$ for the variances and ranges and $0$ for the means, which might not be the best option in general.**
+
+### Example: MLE of full SVC 
 
 We can now start the MLE.
 
 
 ```{r SVC MLE}
-fit <- SVC_mle(y = y, X = X, locs = locs, init = init, 
-               lower = lower)
+fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 
 class(fit)
 
@@ -160,12 +206,12 @@ Now, we can use our `fit` object to make predicitions:
 
 ```{r make predictions}
 # calling predictions without specifying new locations (newlocs) or 
-# new covariates (newX) gives estimates of SVC only at the training location.
+# new covariates (newX) gives estimates of SVC only at the training locations.
 pred.SVC <- predict(fit)
 ```
 
 
-Since we know the true SVC, we can compute the error in prediction and compare it the esimates.
+Since we know the true SVC, we can compute the error in prediction and compare it to the true values.
 
 ```{r visualization of prediction, fig.width=7, fig.height=7}
 colnames(pred.SVC)[1:p] <- paste0("pred.",colnames(pred.SVC)[1:p])
@@ -177,17 +223,128 @@ all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
 all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
 all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
 
+colnames(all.SVC@data) <- paste0(rep(c("pred.", "true.", "err."), each = p), "SVC_", rep(1:p, 3))
 
-spplot(all.SVC[, paste0(rep(c("pred.", "err."), each = p), 
+spplot(all.SVC[, paste0(rep(c("true.", "err.", "pred."), each = p), 
                         "SVC_", 1:p)], colorkey = TRUE)
 ```
 
 
-The errors do not look that good in our first example, but this has something to do with the sample size. If we increase it `m` from `r m` to 40, the picture changes:
+
+In this small example we already can see that the predicted SVC takes the general spatial structure of the true SVC. The error does not appear to have spatial structure for the SVC 2 and 3, resprectively. However, the error for the intercept seems to have some spatial structure. If we increase the number of observations, the picture changes:
 
 
-```{r n1600 example, fig.width=7, fig.height=7, echo = FALSE}
-knitr::include_graphics("figures/SVCs_result_n1600_p3.png")
+```{r n2500 figure, fig.width=7, fig.height=7}
+knitr::include_graphics("figures/SVCs_result_n2500_p3.png")
 ```
+
+
+We do not run the code since it takes a couple hours to do the MLE, but here is the code to reproduce the figure:
+
+```{r n2500 example, eval=FALSE}
+# new m
+m <- 50
+
+# new SVC model
+sp.SVC <- varycoef:::fullSVC_reggrid(m = m, p = p, 
+                                     pars = list(pars = pars,
+                                                 nugget.var = nugget.var))
+spplot(sp.SVC, colorkey = TRUE)
+
+# total number of observations
+n <- m^2
+X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
+y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
+
+
+fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC))
+
+
+
+sp2500 <- predict(fit)
+
+
+colnames(sp2500)[1:p] <- paste0("pred.",colnames(sp2500)[1:p])
+coordinates(sp2500) <- ~loc_x+loc_y
+all.SVC <- cbind(sp2500, sp.SVC[, 1:3])
+
+# compute errors
+all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
+all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
+all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
+
+colnames(all.SVC@data) <- paste0(rep(c("pred.", "true.", "err."), each = p), "SVC_", rep(1:p, 3))
+
+png(filename = "figures/SVCs_result_n2500_p3.png")
+spplot(all.SVC[, paste0(rep(c("true.", "err.", "pred."), each = p), 
+                        "SVC_", 1:p)], colorkey = TRUE, 
+       as.table = TRUE, layout = c(3, 3))
+dev.off()
+```
+
+
+### Example: MLE of mixed SVC
+
+In the case of an mixed SVC, i.e. when $\textbf X \neq \textbf W$, we need to specify the `W` argument of `SVC_mle` independently of `X`. We now have to differentiate between `X` and `W`, which is why we introduce `pX` and `pW` as the number of covariates for `X` and `W`, respectively. 
+
+
+```{r sample SVC model}
+# new m
+m <- 20
+
+# number of fixed effects
+pX <- 4
+# number of mean-zero SVC
+pW <- 3
+
+
+# mean values
+mu <- 1:pX
+
+# new SVC model
+sp.SVC <- varycoef:::fullSVC_reggrid(m = m, p = pW, 
+                                     pars = list(pars = pars,
+                                                 nugget.var = nugget.var), 
+                                     seed = 4)
+
+# total number of observations
+n <- m^2
+X <- matrix(c(rep(1, n), rnorm((pX-1)*n)), ncol = pX)
+W <- X[, 1:pW]
+# calculate y 
+y <- 
+  # X * mu
+  X %*% mu +
+  # W * beta_tilde
+  apply(W * as.matrix(sp.SVC@data[, 1:pW]), 1, sum) + 
+  # nugget
+  sp.SVC@data[, pW+1]
+
+
+# 
+control <- SVC_mle.control()
+control$init <- c(init[1:(2*pW + 1)], mu)
+fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = control)
+
+```
+
+As above, one can then use the `SVC_mle`-class obejct to give estimates of the SVC. In fact, we can further specify the new data matrices `newX` and `newW` to predict `y` at these locations, if wanted. Say, we want to predict the SVC for the location $(0, 0)$
+
+```{r give predictions}
+set.seed(5)
+newlocs <- matrix(c(0, 0), ncol = 2)
+X <- matrix(c(1, rnorm(pX-1)), ncol = pX)
+W <- X[, 1:pW]
+
+pred.SVC <- predict(fit, newlocs = newlocs)
+
+
+ind.next <- apply((coordinates(sp.SVC) == 0) , 1, all)
+
+sp.SVC[ind.next, ]
+
+pred.SVC
+```
+
 
 

@@ -4,8 +4,8 @@
 \alias{SVC_mle}
 \title{MLE of SVC model}
 \usage{
-SVC_mle(y, X, locs, init, control = list(cov.name = "exp", tapering =
-  NULL, cl = NULL, X.scale = FALSE), X.fixed = NULL, ns = NULL, ...)
+SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
+  ...)
 }
 \arguments{
 \item{y}{numeric response vector of dimension n.}
@@ -14,11 +14,9 @@ SVC_mle(y, X, locs, init, control = list(cov.name = "exp", tapering =
 
 \item{locs}{matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.}
 
-\item{init}{numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects}
+\item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x p.fixed}
 
-\item{control}{list of control paramaters, see Details}
-
-\item{X.fixed}{Do not use this argument. Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x p.fixed}
+\item{control}{list of control paramaters, usually given by \code{\link{SVC_mle.control}}}
 
 \item{ns}{Do not use this argument.}
 
@@ -42,12 +40,6 @@ where:
 
 The MLE is done by calling the function optim
 }
-\details{
-The \code{control} list has the following components
-\itemize{
-  \item \code{cov.name}, name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential is supported.
-  \item \code{tapering}, if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied.
-  \item \code{cl}, cluster for parallelization. Currently not supported.
-  \item \code{X.scale}, if \code{TRUE}, the covariates are being standardized. Currently not supported.
-}
+\seealso{
+\code{\link{SVC_mle}}, \code{\link{predict.SVC_mle}}
 }

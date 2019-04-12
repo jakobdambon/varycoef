@@ -4,14 +4,17 @@
 \alias{predict.SVC_mle}
 \title{Prediction of SVC (and response variable)}
 \usage{
-\method{predict}{SVC_mle}(object, newlocs = NULL, newX = NULL, ...)
+\method{predict}{SVC_mle}(object, newlocs = NULL, newX = NULL,
+  newW = NULL, ...)
 }
 \arguments{
 \item{object}{output of \code{SVC_mle}}
 
 \item{newlocs}{matrix of dimension n' x 2. These are the new locations the SVCs are predicted for. If \code{NULL}, the locations from the \code{SVC_mle} (i.e. \code{locs}) are considered.}
 
-\item{newX}{optional matrix of dimension n' x p. If provided, besides the predicted SVC, the function also returns the predicted response variable.}
+\item{newX}{optional matrix of dimension n' x pX. If provided, besides the predicted SVC, the function also returns the predicted response variable.}
+
+\item{newW}{optional matrix of dimension n' x pW.}
 
 \item{...}{further arguments}
 }
@@ -25,4 +28,7 @@ returns a data frame of n' rows and with columns
 }
 \description{
 Prediction of SVC (and response variable)
+}
+\seealso{
+\code{\link{SVC_mle}}
 }
