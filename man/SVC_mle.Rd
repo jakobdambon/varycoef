@@ -10,11 +10,11 @@ SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
 \arguments{
 \item{y}{numeric response vector of dimension n.}
 
-\item{X}{matrix of covariates of dimension n x p. Intercept has to be added manually.}
+\item{X}{matrix of covariates of dimension n x pX. Intercept has to be added manually.}
 
 \item{locs}{matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.}
 
-\item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x p.fixed}
+\item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW}
 
 \item{control}{list of control paramaters, usually given by \code{\link{SVC_mle.control}}}
 
@@ -28,13 +28,15 @@ Object of class \code{SVC_mle}
 \description{
 Calls MLE of the SVC model defined as:
 
-\deqn{y(s) = x^{(1)}(s)\beta_1(s) + ... + x^{(p)}(s)\beta_p(s) + x^{(p+1)}\beta_{p+1} + ... + x^{(p+p.fix)}\beta_{p+p.fix} + \epsilon(s)}
+\deqn{y(s) = X \mu + W \tilde \beta (s) + \epsilon(s)}
 
 where:
 \itemize{
-  \item p is the number of SVC
-  \item \eqn{\beta_j} are distinctly defined Gaussian Random Fields, j = 1, ..., p
-  \item p.fix is the number of fixed coefficients, which is optional
+  \item y is the response (vector of length n)
+  \item X is the data matrix for the fixed effects covariates
+  \item \eqn{\mu} is the vetor containing the fixed effects
+  \item W is the data matrix for the SVCs represented by zero mean GRF
+  \item \eqn{\tilde \beta} are the SVCs represented by zero mean GRF
   \item \eqn{\epsilon} is the nugget effect
 }
 

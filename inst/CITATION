@@ -1,0 +1,11 @@
+year <- 2019
+note <- sprintf("R package version %s", meta$Version)
+
+bibentry(bibtype = "Manual",
+         title = "\\texttt{varycoef}: An \\textsf{R} package for varying coefficient models",
+         author = c(person("Jakob", "Dambon"),
+                    person("Fabio", "Sigrist"),
+                    person("Reinhard", "Furrer")),
+         year = year,
+         note = note,
+         url = "https://github.com/jakobdambon/varycoef")

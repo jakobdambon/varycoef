@@ -5,16 +5,16 @@
 \title{Set Parameters for \code{SVC_mle}}
 \usage{
 SVC_mle.control(cov.name = c("exp"), tapering = NULL, cl = NULL,
-  scale = FALSE, init = NULL, ...)
+  Z.covars = FALSE, init = NULL, ...)
 }
 \arguments{
 \item{cov.name}{name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential is supported.}
 
-\item{tapering}{if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied.}
+\item{tapering}{if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.}
 
 \item{cl}{cluster for parallelization. Currently not supported.}
 
-\item{scale}{if \code{TRUE}, the covariates are being standardized. Currently not supported.}
+\item{Z.covars}{if \code{TRUE}, the covariates are being standardized.}
 
 \item{init}{numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects}
 
@@ -28,7 +28,7 @@ Function to set up control parameters for \code{\link{SVC_mle}}
 }
 \examples{
 control <- SVC_mle.control()
-control$init <- rep(0.3, 10) 
+control$init <- rep(0.3, 10)
 }
 \seealso{
 \code{\link{SVC_mle}}

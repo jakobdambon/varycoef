@@ -39,6 +39,84 @@ y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 control <- SVC_mle.control()
 str(control)
 
+## ----illustrate tapering, echo = FALSE, fig.width=7, fig.height=7--------
+
+r <- c(0.5, 0.3, 0.1)
+out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
+  
+  
+  locs <- coordinates(sp.SVC)
+  if (is.null(taper.range)) {
+    d <- spam::as.spam(dist(locs))
+  } else {
+    d <- spam::nearest.dist(locs, delta = taper.range)
+  }
+  
+  
+  # get covariance function
+  raw.cov.func <- varycoef:::MLE.cov.func("exp")
+  
+  cov.func <- list(
+    # covariance function
+    cov.func = function(x) raw.cov.func(d, x), 
+    # number of observations at single location (needed for nugget)
+    ns = NULL)
+  
+  W <- X
+  
+  outer.W <- lapply(1:p, function(j) W[, j]%o%W[, j])
+  
+  
+  # tapering?
+  taper <- if(is.null(taper.range)) {
+    # without tapering
+    NULL
+  } else {
+    # with tapering
+    spam::cov.wend1(d, c(taper.range, 1, 0))
+  }
+  
+  x <- c(rep(1, 2*p+1), rep(0, p))
+  
+  S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W)
+  
+  nll <- function() varycoef:::nLL(x, cov.func, outer.W, y, X, W, taper = taper)
+  
+  list(d, taper, S_y, nll)
+})
+
+
+
+
+par(mfrow = c(2, 2))
+
+
+image(out[[1]][[3]])
+title(main = "No tapering applied")
+image(out[[2]][[3]])
+title(main = paste0("Taper range = ", r[1]))
+image(out[[3]][[3]])
+title(main = paste0("Taper range = ", r[2]))
+image(out[[4]][[3]])
+title(main = paste0("Taper range = ", r[3]))
+
+
+par(mfrow = c(1, 1))
+
+
+## ----runtime tapering, fig.width=7, echo = TRUE, fig.height=5, warning=FALSE----
+
+
+library(microbenchmark)
+
+(mb <- microbenchmark(no_tapering  = out[[1]][[4]](),
+                      tapering_0.5 = out[[2]][[4]](), 
+                      tapering_0.3 = out[[3]][[4]](),
+                      tapering_0.1 = out[[4]][[4]]())
+)
+
+boxplot(mb, unit = "ms", log = TRUE, xlab = "tapering", ylab = "time (milliseconds)")
+
 ## ----mean initials-------------------------------------------------------
 (mu.init <- coef(lm(y~.-1, data = data.frame(y = y, X = X))))
 
@@ -156,7 +234,9 @@ sp.SVC <- varycoef:::fullSVC_reggrid(m = m, p = pW,
 
 # total number of observations
 n <- m^2
-X <- matrix(c(rep(1, n), rnorm((pX-1)*n)), ncol = pX)
+X <- matrix(c(rep(1, n), rnorm((pX-1)*n, 
+                               mean = rep(1:(pX-1), each = n), 
+                               sd = rep(0.2*(1:(pX-1)), each = n))), ncol = pX)
 W <- X[, 1:pW]
 # calculate y 
 y <- 
@@ -168,9 +248,9 @@ y <-
   sp.SVC@data[, pW+1]
 
 
-# 
-control <- SVC_mle.control()
-control$init <- c(init[1:(2*pW + 1)], mu)
+
+
+control <- SVC_mle.control(init = c(init[1:(2*pW + 1)], mu))
 fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = control)
 
 

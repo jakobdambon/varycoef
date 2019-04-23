@@ -1,7 +1,7 @@
 Package: varycoef
 Type: Package
 Title: varycoef: Varying Coefficients
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: as.person(c(
     "Jakob Dambon <jakob.dambon@math.uzh.ch> [aut, cre]", 
     "Fabio Sigrist [ctb]", 
@@ -16,8 +16,9 @@ Suggests:
   RandomFields,
   tmap,
   knitr,
-  rmarkdown
-Description: Gives MLE Method to estimate and predict SVC Models.
+  rmarkdown,
+  microbenchmark
+Description: Gives MLE Method to estimate and predict Spatially Varying Coefficient (SVC) Models. It supports covariance tapering to support MLE on large data.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true

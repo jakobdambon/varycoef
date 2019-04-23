@@ -60,28 +60,3 @@ Sigma_y_y <- function(x, cov.func, X, newX) {
   Reduce('+', cov)
 }
 
-
-par.mapping <- function(p, ind.0.W, ind.0.X) {
-  return(function(x) {
-    out <- rep(NA, 3*p+1)
-    jW <- 1
-    jX <- 1
-    for (j in 1:p) {
-      if (j %in% ind.0.W) {
-        out[2*(j-1)+1:2] <- c(1, 1)
-      } else {
-        out[2*(j-1)+1:2] <- x[2*(jW-1)+1:2]
-        jW <- jW+1
-      }
-
-      if (j %in% ind.0.X) {
-        out[2*p+1+j] <- 0
-      } else {
-        out[2*p+1+j] <- x[2*(p-length(ind.0.W))+1+jX]
-        jX <- jX+1
-      }
-    }
-    out[2*p+1] <- x[2*(p-length(ind.0.W))+1]
-    return(out)
-  })
-}

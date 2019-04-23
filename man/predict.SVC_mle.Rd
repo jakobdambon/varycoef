@@ -5,16 +5,18 @@
 \title{Prediction of SVC (and response variable)}
 \usage{
 \method{predict}{SVC_mle}(object, newlocs = NULL, newX = NULL,
-  newW = NULL, ...)
+  newW = NULL, backtransform = TRUE, ...)
 }
 \arguments{
-\item{object}{output of \code{SVC_mle}}
+\item{object}{output of \code{\link{SVC_mle}}}
 
 \item{newlocs}{matrix of dimension n' x 2. These are the new locations the SVCs are predicted for. If \code{NULL}, the locations from the \code{SVC_mle} (i.e. \code{locs}) are considered.}
 
 \item{newX}{optional matrix of dimension n' x pX. If provided, besides the predicted SVC, the function also returns the predicted response variable.}
 
 \item{newW}{optional matrix of dimension n' x pW.}
+
+\item{backtransform}{logical. If standardization in function call of \code{SVC_mle} took place, backtransform results in prediciton. Does not cover transformation on model formula (e.g. log-transformation of response), only standardization of covariates.}
 
 \item{...}{further arguments}
 }
