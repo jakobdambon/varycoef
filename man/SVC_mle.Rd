@@ -5,7 +5,7 @@
 \title{MLE of SVC model}
 \usage{
 SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
-  ...)
+  optim.control = list())
 }
 \arguments{
 \item{y}{numeric response vector of dimension n.}
@@ -20,7 +20,7 @@ SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
 
 \item{ns}{Do not use this argument.}
 
-\item{...}{futher arguments for method}
+\item{optim.control}{list of control arguments for optimization function, see Details in \code{\link{optim}}}
 }
 \value{
 Object of class \code{SVC_mle}

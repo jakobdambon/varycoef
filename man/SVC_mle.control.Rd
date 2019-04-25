@@ -14,7 +14,7 @@ SVC_mle.control(cov.name = c("exp"), tapering = NULL, cl = NULL,
 
 \item{cl}{cluster for parallelization. Currently not supported.}
 
-\item{Z.covars}{if \code{TRUE}, the covariates are being standardized.}
+\item{Z.covars}{if \code{TRUE}, the covariates are being standardized. Not implemented.}
 
 \item{init}{numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects}
 

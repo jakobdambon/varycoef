@@ -68,13 +68,13 @@ SVC_mle.control <- function(cov.name = c("exp"),
 #' }
 #'
 #' The MLE is done by calling the function optim
-#' @param y         numeric response vector of dimension n.
-#' @param X         matrix of covariates of dimension n x pX. Intercept has to be added manually.
-#' @param locs      matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.
-#' @param W         Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW
-#' @param control   list of control paramaters, usually given by \code{\link{SVC_mle.control}}
-#' @param ns        Do not use this argument.
-#' @param ...       futher arguments for method
+#' @param y              numeric response vector of dimension n.
+#' @param X              matrix of covariates of dimension n x pX. Intercept has to be added manually.
+#' @param locs           matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.
+#' @param W              Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW
+#' @param control        list of control paramaters, usually given by \code{\link{SVC_mle.control}}
+#' @param ns             Do not use this argument.
+#' @param optim.control  list of control arguments for optimization function, see Details in \code{\link{optim}}
 #'
 #'
 #' @return Object of class \code{SVC_mle}
@@ -83,12 +83,13 @@ SVC_mle.control <- function(cov.name = c("exp"),
 #'
 #' @import spam
 #' @import methods
-#' @importFrom stats dist
+#' @importFrom stats dist optim
 #' @export
 SVC_mle <- function(y, X, locs,
                     W = NULL,
                     control = SVC_mle.control(),
-                    ns = NULL, ...) {
+                    ns = NULL, 
+                    optim.control = list()) {
 
 
 
@@ -99,7 +100,8 @@ SVC_mle <- function(y, X, locs,
                    locs = locs,
                    control = control,
                    W = X,
-                   ns = NULL, ...))
+                   ns = NULL, 
+                   optim.control = optim.control))
   }
 
 
@@ -136,10 +138,11 @@ SVC_mle <- function(y, X, locs,
 
     return(SVC_mle(y = spam::crossprod.spam(J, y[ord.by.locs]),
                    X = X.tilde,
-                   locs = u.locs[order(u.ch.locs)],
+                   locs = u.locs[order(u.ch.locs), ],
                    control = control,
                    W = W.tilde,
-                   ns = ns, ...))
+                   ns = ns, 
+                   optim.control = optim.control))
   }
 
 
@@ -182,7 +185,7 @@ SVC_mle <- function(y, X, locs,
                    control = control,
                    W = ZW,
                    ns = ns,
-                   ...))
+                   optim.control = optim.control))
 
   } # end scaling
 
@@ -217,7 +220,7 @@ SVC_mle <- function(y, X, locs,
   }
 
   # lower bound for optim
-  lower <- c(rep(0, 2*pW+1), rep(-Inf, pX))
+  lower <- c(rep(0.00001, 2*pW+1), rep(-Inf, pX))
 
 
 
@@ -250,7 +253,7 @@ SVC_mle <- function(y, X, locs,
                                  taper    = taper,
                                method = "L-BFGS-B",
                                lower = lower,
-                               ...)
+                               control = optim.control)
 
   # preparing output
   result <- list(optim.output = optim.output,
@@ -258,8 +261,9 @@ SVC_mle <- function(y, X, locs,
                                   X = X,
                                   locs = locs,
                                   control = control,
+                                  optim.control = optim.control, 
                                   W = W,
-                                  ns = ns, ...),
+                                  ns = ns),
                  comp.args = list(outer.W = outer.W,
                                   lower   = lower,
                                   pW = pW,
