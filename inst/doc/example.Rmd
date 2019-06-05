@@ -112,11 +112,11 @@ As one might see in the help file of the `SVC_mle` function, it has 3 mandatory 
 
 ### Control Parameters
 
-As for the control parameters for `SVC_mle`, we go through them as they are implemented in the current version of `varycoef`. By calling `SVC_mle.control`, we create an list with all needed arguments to start a simple `SVC_mle`. 
+As for the control parameters for `SVC_mle`, we go through them as they are implemented in the current version of `varycoef`. By calling `SVC_mle_control`, we create an list with all needed arguments to start a simple `SVC_mle`. 
 
 
 ```{r contorl parameters}
-control <- SVC_mle.control()
+control <- SVC_mle_control()
 str(control)
 ```
 
@@ -176,7 +176,7 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W)
   
-  nll <- function() varycoef:::nLL(x, cov.func, outer.W, y, X, W, taper = taper)
+  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, taper = taper)
   
   list(d, taper, S_y, nll)
 })
@@ -224,12 +224,6 @@ boxplot(mb, unit = "ms", log = TRUE, xlab = "tapering", ylab = "time (millisecon
 
 To be implemented.
 
-#### Standardizing of Covariates
-
-
-To be implemented
-
-
 
 #### Initial Values
 
@@ -264,7 +258,7 @@ init <- c(rep(c(scale.init, var.init), p), # GRFs scales and variances
 ```
 
 
-One can either overwrite the default initial value (`control$init`) or call `SVC_mle.control` with corresponding arguments:
+One can either overwrite the default initial value (`control$init`) or call `SVC_mle_control` with corresponding arguments:
 
 ```{r overwrite initials}
 # default
@@ -274,10 +268,31 @@ control$init
 control$init <- init
 
 # create new
-control <- SVC_mle.control(init = init)
+control <- SVC_mle_control(init = init)
 ```
 
 **The default values gives initial values of $0.3$ for the variances and ranges and $0$ for the means, which might not be the best option in general.**
+
+
+#### Lower and Upper Bounds
+
+The optimization function `optim` allows with its chosen method `"L-BFGS-B"` the usage of lower and upper bounds. The lower and upper bounds for each parameter can be given in correspondence to the order in the initial values.
+
+
+#### Calculate Residuals
+
+The argument `cal.res` takes logical values and decides whether the residuals of the SVC model should be computed. This takes some extra time, but can be useful since an extraction of those residuals is possible using a method or `residuals`. 
+
+```{r overwrite cal.res}
+# default
+control$cal.res
+
+# overwrite
+control$cal.res <- TRUE
+```
+
+Additionally, one can use the `fitted` to extract the fitted values from the `SVC_mle` object for the training data set.
+
 
 ### Example: MLE of full SVC 
 
@@ -290,7 +305,7 @@ fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 class(fit)
 
 # comparison of estimated and true parameters
-rbind(fit$optim.output$par, 
+rbind(fit$MLE$optim.output$par, 
       c(pars[, "scale"], pars[, "var"], nugget.var, pars[, "mu"]))
 ```
 
@@ -416,10 +431,10 @@ y <-
   # nugget
   sp.SVC@data[, pW+1]
 
+# new initial values
+control <- SVC_mle_control(init = c(init[1:(2*pW + 1)], mu))
 
-
-
-control <- SVC_mle.control(init = c(init[1:(2*pW + 1)], mu))
+# MLE
 fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = control)
 
 ```

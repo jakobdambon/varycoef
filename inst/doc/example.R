@@ -36,7 +36,7 @@ head(X)
 y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 
 ## ----contorl parameters--------------------------------------------------
-control <- SVC_mle.control()
+control <- SVC_mle_control()
 str(control)
 
 ## ----illustrate tapering, echo = FALSE, fig.width=7, fig.height=7--------
@@ -80,7 +80,7 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W)
   
-  nll <- function() varycoef:::nLL(x, cov.func, outer.W, y, X, W, taper = taper)
+  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, taper = taper)
   
   list(d, taper, S_y, nll)
 })
@@ -139,7 +139,14 @@ control$init
 control$init <- init
 
 # create new
-control <- SVC_mle.control(init = init)
+control <- SVC_mle_control(init = init)
+
+## ----overwrite cal.res---------------------------------------------------
+# default
+control$cal.res
+
+# overwrite
+control$cal.res <- TRUE
 
 ## ----SVC MLE-------------------------------------------------------------
 fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
@@ -147,7 +154,7 @@ fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 class(fit)
 
 # comparison of estimated and true parameters
-rbind(fit$optim.output$par, 
+rbind(fit$MLE$optim.output$par, 
       c(pars[, "scale"], pars[, "var"], nugget.var, pars[, "mu"]))
 
 ## ----make predictions----------------------------------------------------
@@ -247,10 +254,10 @@ y <-
   # nugget
   sp.SVC@data[, pW+1]
 
+# new initial values
+control <- SVC_mle_control(init = c(init[1:(2*pW + 1)], mu))
 
-
-
-control <- SVC_mle.control(init = c(init[1:(2*pW + 1)], mu))
+# MLE
 fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = control)
 
 
