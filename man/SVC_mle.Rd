@@ -2,12 +2,21 @@
 % Please edit documentation in R/SVC_mle.R
 \name{SVC_mle}
 \alias{SVC_mle}
+\alias{SVC_mle.default}
+\alias{SVC_mle.formula}
 \title{MLE of SVC model}
 \usage{
-SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
-  optim.control = list())
+SVC_mle(...)
+
+\method{SVC_mle}{default}(y, X, locs, W = NULL, control = NULL,
+  optim.control = list(), ...)
+
+\method{SVC_mle}{formula}(formula, data, RE_formula = NULL, locs,
+  control, optim.control, ...)
 }
 \arguments{
+\item{...}{further arguments}
+
 \item{y}{numeric response vector of dimension n.}
 
 \item{X}{matrix of covariates of dimension n x pX. Intercept has to be added manually.}
@@ -16,11 +25,15 @@ SVC_mle(y, X, locs, W = NULL, control = SVC_mle.control(), ns = NULL,
 
 \item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW}
 
-\item{control}{list of control paramaters, usually given by \code{\link{SVC_mle.control}}}
-
-\item{ns}{Do not use this argument.}
+\item{control}{list of control paramaters, usually given by \code{\link{SVC_mle_control}}}
 
 \item{optim.control}{list of control arguments for optimization function, see Details in \code{\link{optim}}}
+
+\item{formula}{Formula describing the fixed effects in SVC model. The response, i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
+
+\item{data}{data frame containing the observations}
+
+\item{RE_formula}{Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
 }
 \value{
 Object of class \code{SVC_mle}
@@ -40,8 +53,8 @@ where:
   \item \eqn{\epsilon} is the nugget effect
 }
 
-The MLE is done by calling the function optim
+The MLE is done by calling the function \code{optim}.
 }
 \seealso{
-\code{\link{SVC_mle}}, \code{\link{predict.SVC_mle}}
+\code{\link{predict.SVC_mle}}
 }

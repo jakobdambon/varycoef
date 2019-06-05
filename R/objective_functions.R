@@ -1,7 +1,7 @@
 # holds objective functions to be optimized, i.e. negative log-likelihood of SVC-Models
 
 
-nLL <- function(x, cov_func, outer.W, y, X, W, taper = NULL) {
+n2LL <- function(x, cov_func, outer.W, y, X, W, taper = NULL) {
 
 
   pW <- ncol(W)
@@ -18,12 +18,12 @@ nLL <- function(x, cov_func, outer.W, y, X, W, taper = NULL) {
   # get beta
   beta <- x[1 + 2*pW + 1:pX]
 
-  resid <- y - X %*% beta
+  res <- y - X %*% beta
 
 
   return(n * log(2 * pi) +
            2 * c(spam::determinant.spam.chol.NgPeyton(cholS)$modulus) +
-           as.numeric(crossprod(spam::forwardsolve(cholS, resid,
+           as.numeric(crossprod(spam::forwardsolve(cholS, res,
                                                    transpose = TRUE,
                                                    upper.tri = TRUE))))
 
