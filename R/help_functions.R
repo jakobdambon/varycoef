@@ -23,8 +23,8 @@ Sigma_y <- function(x, p, cov_func, outer.W, taper = NULL) {
 
   options(spam.trivalues = TRUE)
 
-  
-  Sigma <- Reduce('+', Sigma)
+
+  Sigma <- as.spam(Reduce('+', Sigma))
   if (!is.null(taper)) {
     Sigma <- Sigma * taper
   }
@@ -32,6 +32,39 @@ Sigma_y <- function(x, p, cov_func, outer.W, taper = NULL) {
   spam::lower.tri.spam(Sigma) + spam::t.spam(Sigma)
 }
 
+
+Sigma_y_profile <- function(x, p, cov_func, outer.W, taper = NULL) {
+  n <- nrow(outer.W[[1]])
+
+  Sigma <- lapply(1:p, function(j) {
+
+    hyper.par <- c(x[2*(j-1) + 1:2], 0)
+    Cov <- do.call(cov_func$cov.func, list(hyper.par))
+
+    # is needed since as.spam.dist does not return 0 on diagonal
+    spam::diag.spam(Cov) <- x[2*j]
+
+    return(Cov * outer.W[[j]])
+
+  })
+
+  options(spam.trivalues = TRUE)
+
+
+  Sigma <- Reduce('+', Sigma)
+  if (is.null(cov_func$ns)){
+    Sigma + spam::diag.spam(rep(1, n))
+  } else {
+    Sigma + spam::diag.spam(cov_func$ns)
+  }
+
+
+  if (!is.null(taper)) {
+    Sigma <- Sigma * taper
+  }
+  # add lower tri. cov-matrices up and mirror them to get full cov-matrix
+  spam::lower.tri.spam(Sigma) + spam::t.spam(Sigma)
+}
 
 Sigma_b_y <- function(x, cov.func, W, n.new) {
   n <- nrow(W)

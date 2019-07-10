@@ -2,9 +2,7 @@
 % Please edit documentation in R/SVC_mle.R
 \name{fitted.SVC_mle}
 \alias{fitted.SVC_mle}
-\title{Extact Model Fitted Values
-
-Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call}
+\title{Extact Model Fitted Values}
 \usage{
 \method{fitted}{SVC_mle}(object, ...)
 }
@@ -14,10 +12,8 @@ Method to extract the fitted values from an \code{\link{SVC_mle}} object. This i
 \item{...}{further arguments}
 }
 \value{
-numeric, fitted values to given data
+data frame, fitted values to given data, i.e. the SVC as well as the response and their locations
 }
 \description{
-Extact Model Fitted Values
-
-Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call
+Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
 }

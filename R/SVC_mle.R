@@ -9,11 +9,12 @@
 MLE.cov.func <- function(cov.name) {
   cov.func = switch(cov.name,
                     "exp" = spam::cov.exp,
-                    # "sph" = spam::cov.sph,
+                    "sph" = spam::cov.sph,
                     stop("SVC.cov argument not defined."))
 }
 
 ## ---- help function to do MLE for SVC model ----
+#' @importFrom stats coef lm
 MLE_computation <- function(y, X, locs, W,
                             control,
                             ns = NULL,
@@ -115,59 +116,167 @@ MLE_computation <- function(y, X, locs, W,
     # without tapering
     NULL
   } else {
-    # with tapering
-    spam::cov.wend1(d, c(control$taper, 1, 0))
+    # with tapering (in that case d is of class spam)
+    switch(control$cov.name,
+           "exp" = spam::cov.wend1(d, c(control$taper, 1, 0)),
+           "sph" =
+             {
+               h <- d
+               h@entries <- rep(1, length(h@entries))
+               h
+             })
+
   }
 
-  optim.output <- stats::optim(par     = init,
-                               fn      = n2LL,
+  # holds parameters we optimize over
+  path.env <- new.env(parent = emptyenv())
+  path.env$mu <- NULL
+  path.env$x  <- NULL
+  path.env$profileLik <- control$profileLik
+
+
+  # pc priors
+  # ordering: pcp = c(\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma)
+  pcp.neg2dens <- if (is.null(control$pc.prior)) {
+    NULL
+  } else {
+    pcp <- control$pc.prior
+
+    lambda.r <- -log(pcp[2])*2*pcp[1]
+    lambda.s <- -log(pcp[4])/pcp[3]
+
+    # for Matérn GRF (-2 * log( pc prior dens))
+    function(theta) {
+      4*log(theta[1]) +
+        lambda.r/theta[1]+2*lambda.s*sqrt(theta[2])
+    }
+
+  }
+
+
+
+  if (control$profileLik) {
+
+    # prepare for optimization by computing mean effect
+    mu.estimate <- if (control$mean.est == "GLS") {
+      NULL
+    } else { # Ordinary Least Squares
+      coef(lm(y~X-1))
+    }
+
+    # start optimization
+    optim.output <- stats::optim(par     = init[1:(2*pW + 1)],
+                                 fn      = profile.n2LL,
+                                 # arguments of profile.2nLL
+                                    cov_func = cov.func,
+                                    outer.W  = outer.W,
+                                    y        = y,
+                                    X        = X,
+                                    W        = W,
+                                    mean.est = mu.estimate,
+                                    taper    = taper,
+                                    envir    = path.env,
+                                    pc.dens  = pcp.neg2dens,
+                                 method  = "L-BFGS-B",
+                                 lower   = lower[1:(2*pW + 1)],
+                                 upper   = upper[1:(2*pW + 1)],
+                                 control = optim.control)
+  } else {
+
+    optim.output <- stats::optim(par     = init,
+                                 fn      = n2LL,
                                  # arguments of n2LL
-                                 cov_func = cov.func,
-                                 outer.W  = outer.W,
-                                 y        = y,
-                                 X        = X,
-                                 W        = W,
-                                 taper    = taper,
-                               method  = "L-BFGS-B",
-                               lower   = lower,
-                               upper   = upper,
-                               control = optim.control)
+                                    cov_func = cov.func,
+                                    outer.W  = outer.W,
+                                    y        = y,
+                                    X        = X,
+                                    W        = W,
+                                    taper    = taper,
+                                    envir    = path.env,
+                                    pc.dens  = pcp.neg2dens,
+                                 method  = "L-BFGS-B",
+                                 lower   = lower,
+                                 upper   = upper,
+                                 control = optim.control)
+    }
 
   # preparing output
-  result <- list(optim.output = optim.output,
-                 call.args = list(y = y,
-                                  X = X,
-                                  locs = locs,
-                                  control = control,
-                                  optim.control = optim.control,
-                                  W = W,
-                                  ns = ns),
-                 comp.args = list(outer.W = outer.W,
-                                  lower   = lower,
-                                  pW = pW,
-                                  pX = pX,
-                                  init = init))
+  return(list(optim.output = optim.output,
+              path = path.env,
+              call.args = list(y = y,
+                               X = X,
+                               locs = locs,
+                               control = control,
+                               optim.control = optim.control,
+                               W = W,
+                               ns = ns),
+              comp.args = list(outer.W = outer.W,
+                               lower = lower,
+                               upper = upper,
+                               init  = init,
+                               pW = pW,
+                               pX = pX)))
+
+
 }
 
-## ---- help function to compute residuals after MLE ----
-residual_computation <- function(ML_estimate, y, X, W, locs) {
-  temp <- list(MLE = ML_estimate)
-  class(temp) <- "SVC_mle"
+## ---- help function to compute fitted values after MLE ----
+fitted_computation <- function(SVC_obj, y, X, W, locs) {
+  class(SVC_obj) <- "SVC_mle"
 
-  pred <- predict.SVC_mle(temp, newlocs = locs, newX = X, newW = W)
+  predict.SVC_mle(SVC_obj, newlocs = locs, newX = X, newW = W)
 
-  y-as.numeric(pred$y.pred)
 }
 
 ## ---- help function to construct SVC_mle object ----
-create_SVC_mle <- function(ML_estimate, y, X, W, locs, cal.res) {
-  list(MLE = ML_estimate,
-       residuals = if (cal.res) {
-         residual_computation(ML_estimate, y, X, W, locs)
-         } else {
-           NULL
-         },
-       data = list(y = y, X = X, W = W, locs = locs))
+create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
+
+  # extract covariance parameters and coefficients for methods
+  if (control$profileLik) {
+    # with profile LL has to get mu first
+    cov.par <- ML_estimate$optim.output$par
+
+    if (control$mean.est == "GLS") {
+      id <- which.min(apply(ML_estimate$path$x, 2,
+                            function(x) sum(( x-cov.par)^2)))
+      mu <- ML_estimate$path$mu[, id]
+    } else {
+      mu <- ML_estimate$path$mu[, 1]
+    }
+
+
+  } else {
+    pW <- ncol(W)
+    pX <- ncol(X)
+
+    # without profile LL mu is already in optim pars.
+    hyper.par <- ML_estimate$optim.output$par
+
+    cov.par <- hyper.par[1:(2*pW+1)]
+    mu <- hyper.par[2*pW+1 + 1:pX]
+  }
+
+
+  SVC_obj <- list(MLE = ML_estimate,
+                  coefficients = mu,
+                  cov.par = cov.par,
+                  fitted = NULL,
+                  residuals = NULL,
+                  data = list(y = y, X = X, W = W, locs = locs))
+
+
+  if (control$save.fitted) {
+    # compute fitted values (i.e. EBLUP = empirical BLUP)
+    pred <- fitted_computation(SVC_obj, y, X, W, locs)
+
+    SVC_obj$fitted = pred
+    SVC_obj$residuals = y-pred$y.pred
+  }
+
+
+  return(SVC_obj)
+
+
 }
 
 
@@ -175,14 +284,17 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, cal.res) {
 #'
 #' @description Function to set up control parameters for \code{\link{SVC_mle}}
 #'
-#' @param cov.name name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential is supported.
-#' @param tapering if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.
-#' @param cl       cluster for parallelization. Currently not supported.
-#' @param init     numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects
-#' @param lower    lower bound for optim, default \code{NULL} sets the lower bounds to 1e-6 for covariance parameters and \code{-Inf} for mean parameters.
-#' @param upper    upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.
-#' @param cal.res  logical. If \code{TRUE}, calculates the residuals after MLE.
-#' @param ...      further parameters yet to be implemented
+#' @param cov.name    name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential and \code{"exp"} for spherical covariance functions are supported.
+#' @param tapering    if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.
+#' @param cl          cluster for parallelization. Currently not supported.
+#' @param init        numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects
+#' @param lower       lower bound for optim, default \code{NULL} sets the lower bounds to 1e-6 for covariance parameters and \code{-Inf} for mean parameters.
+#' @param upper       upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.
+#' @param save.fitted logical. If \code{TRUE}, calculates the fitted values after MLE and saves them.
+#' @param profileLik  logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.
+#' @param mean.est    if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estiamte.
+#' @param pc.prior    takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea Simpson and Fulgstad.
+#' @param ...         further parameters yet to be implemented
 #'
 #' @return A list with which \code{\link{SVC_mle}} can be controlled
 #' @export
@@ -194,25 +306,47 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, cal.res) {
 #' # or
 #' control <- SVC_mle_control()
 #' control$init <- rep(0.3, 10)
-SVC_mle_control <- function(cov.name = c("exp"),
-                            tapering = NULL,
-                            cl = NULL,
-                            init = NULL,
-                            lower = NULL,
-                            upper = NULL,
-                            cal.res = FALSE, ...) {
-  stopifnot(is.null(tapering) | (tapering>=0) | is.logical(cal.res))
+SVC_mle_control <- function(...) UseMethod("SVC_mle_control")
+
+
+#' @rdname SVC_mle_control
+#' @export
+SVC_mle_control.default <- function(cov.name = c("exp", "sph"),
+                                    tapering = NULL,
+                                    cl = NULL,
+                                    init = NULL,
+                                    lower = NULL,
+                                    upper = NULL,
+                                    save.fitted = FALSE,
+                                    profileLik = FALSE,
+                                    mean.est = c("GLS", "OLS"),
+                                    pc.prior = NULL, ...) {
+  stopifnot(is.null(tapering) |
+              (tapering>=0) |
+              is.logical(save.fitted) |
+              is.logical(profileLik))
+
+
   list(cov.name = match.arg(cov.name),
        tapering = tapering,
        cl = cl,
        init = init,
        lower = lower,
        upper = upper,
-       cal.res = cal.res,
+       save.fitted = save.fitted,
+       profileLik = profileLik,
+       mean.est = match.arg(mean.est),
+       pc.prior = pc.prior,
        ...)
 }
 
-
+#' @param object An object of class \code{SVC_mle}. The function then extracts the control settings from the particular function call used to compute \code{object}.
+#'
+#' @rdname SVC_mle_control
+#' @export
+SVC_mle_control.SVC_mle <- function(object, ...) {
+  object$MLE$call.args$control
+}
 
 
 
@@ -227,7 +361,7 @@ SVC_mle_control <- function(cov.name = c("exp"),
 #'
 #' @description Calls MLE of the SVC model defined as:
 #'
-#' \deqn{y(s) = X \mu + W \tilde \beta (s) + \epsilon(s)}
+#' \deqn{y(s) = X \mu + W \eta (s) + \epsilon(s)}
 #'
 #' where:
 #' \itemize{
@@ -235,7 +369,7 @@ SVC_mle_control <- function(cov.name = c("exp"),
 #'   \item X is the data matrix for the fixed effects covariates
 #'   \item \eqn{\mu} is the vetor containing the fixed effects
 #'   \item W is the data matrix for the SVCs represented by zero mean GRF
-#'   \item \eqn{\tilde \beta} are the SVCs represented by zero mean GRF
+#'   \item \eqn{\eta} are the SVCs represented by zero mean GRF
 #'   \item \eqn{\epsilon} is the nugget effect
 #' }
 #'
@@ -243,7 +377,7 @@ SVC_mle_control <- function(cov.name = c("exp"),
 #'
 #' @param y              numeric response vector of dimension n.
 #' @param X              matrix of covariates of dimension n x pX. Intercept has to be added manually.
-#' @param locs           matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.
+#' @param locs           matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{W} and \code{locs}.
 #' @param W              Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW
 #' @param control        list of control paramaters, usually given by \code{\link{SVC_mle_control}}
 #' @param optim.control  list of control arguments for optimization function, see Details in \code{\link{optim}}
@@ -285,7 +419,7 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
                                  optim.control = optim.control,
                                  ns = NULL)
 
-  object <- create_SVC_mle(ML_estimate, y, X, W, locs, control$cal.res)
+  object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
 
   class(object) <- "SVC_mle"
   return(object)
@@ -345,7 +479,9 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
 #' @export
 predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, backtransform = TRUE, ...) {
 
-  hyper.par <- object$MLE$optim.output$par
+  mu <- coef(object)
+  cov.par <- cov_par(object)
+
 
   pW <- object$MLE$comp.args$pW
   pX <- object$MLE$comp.args$pX
@@ -374,14 +510,14 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
   # cross-covariance (newlocs and locs)
   cf_dd <- function(x) raw.cf(dd, x)
 
-  cov_y <- Sigma_y(x = hyper.par,
+  cov_y <- Sigma_y(x = cov.par,
                    p = pW,
                    cov_func = list(cov.func = cf, ns = object$MLE$call.args$ns),
                    outer.W = object$MLE$comp.args$outer.W)
 
 
   # cross-covariance beta' y
-  cov_b_y <- Sigma_b_y(x = hyper.par,
+  cov_b_y <- Sigma_b_y(x = cov.par,
                        cov.func = cf_dd,
                        W = as.matrix(object$MLE$call.args$W),
                        n.new = n.new)
@@ -389,7 +525,7 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
 
 
   eff <- cov_b_y %*% spam::solve.spam(cov_y) %*%
-    (object$MLE$call.args$y - object$MLE$call.args$X %*% hyper.par[2*pW + 1 + 1:pX])
+    (object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
 
   eff <- matrix(eff, ncol = pW)
 
@@ -399,7 +535,7 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
     stopifnot(pW == ncol(newW),
               pX == ncol(newX))
 
-    y.pred <- apply(as.matrix(newW) * eff, 1, sum) + newX %*% hyper.par[2*pW + 1 + 1:pX]
+    y.pred <- apply(as.matrix(newW) * eff, 1, sum) + newX %*% mu
 
     out <- as.data.frame(cbind(eff, y.pred, newlocs))
     colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "loc_x", "loc_y")
@@ -417,7 +553,7 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
 
 #' @title Extact Model Residuals
 #'
-#' Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call
+#' @description Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
 #'
 #' @param object \code{\link{SVC_mle}} object
 #' @param ...    further arguments
@@ -434,14 +570,50 @@ residuals.SVC_mle <- function(object, ...) {
 
 #' @title Extact Model Fitted Values
 #'
-#' Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call
+#' @description Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
 #'
 #' @param object \code{\link{SVC_mle}} object
 #' @param ...    further arguments
 #'
-#' @return numeric, fitted values to given data
+#' @return data frame, fitted values to given data, i.e. the SVC as well as the response and their locations
 #' @export
 fitted.SVC_mle <- function(object, ...) {
-  stopifnot(!is.null(object$residuals))
-  return(object$data$y - object$residuals)
+  stopifnot(!is.null(object$fitted))
+  return(object$fitted)
 }
+
+
+
+
+#' @title Extact Mean Effects
+#'
+#' @description Method to extract the mean effects from an \code{\link{SVC_mle}} object.
+#'
+#' @param object \code{\link{SVC_mle}} object
+#' @param ...    further arguments
+#'
+#' @return vector with mean effects, i.e. \eqn{\mu} from \code{\link{SVC_mle}}
+#' @export
+coef.SVC_mle <- function(object, ...) {
+  return(as.numeric(object$coefficients))
+}
+
+
+
+
+#' @title Extact Covariance Parameters
+#'
+#' Method to extract the covariance parameters from an \code{\link{SVC_mle}} object.
+#'
+#' @param object \code{\link{SVC_mle}} object
+#' @param ...    further arguments
+#'
+#' @return vector with covariance parameters
+#' @export
+cov_par <- function(object, ...) {
+  return(as.numeric(object$cov.par))
+}
+
+
+
+

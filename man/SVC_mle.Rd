@@ -21,7 +21,7 @@ SVC_mle(...)
 
 \item{X}{matrix of covariates of dimension n x pX. Intercept has to be added manually.}
 
-\item{locs}{matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{X.fixed} and \code{locs}.}
+\item{locs}{matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{W} and \code{locs}.}
 
 \item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW}
 
@@ -41,7 +41,7 @@ Object of class \code{SVC_mle}
 \description{
 Calls MLE of the SVC model defined as:
 
-\deqn{y(s) = X \mu + W \tilde \beta (s) + \epsilon(s)}
+\deqn{y(s) = X \mu + W \eta (s) + \epsilon(s)}
 
 where:
 \itemize{
@@ -49,7 +49,7 @@ where:
   \item X is the data matrix for the fixed effects covariates
   \item \eqn{\mu} is the vetor containing the fixed effects
   \item W is the data matrix for the SVCs represented by zero mean GRF
-  \item \eqn{\tilde \beta} are the SVCs represented by zero mean GRF
+  \item \eqn{\eta} are the SVCs represented by zero mean GRF
   \item \eqn{\epsilon} is the nugget effect
 }
 

@@ -2,9 +2,7 @@
 % Please edit documentation in R/SVC_mle.R
 \name{residuals.SVC_mle}
 \alias{residuals.SVC_mle}
-\title{Extact Model Residuals
-
-Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call}
+\title{Extact Model Residuals}
 \usage{
 \method{residuals}{SVC_mle}(object, ...)
 }
@@ -17,7 +15,5 @@ Method to extract the residuals from an \code{\link{SVC_mle}} object. This is on
 numeric, residuals of model
 }
 \description{
-Extact Model Residuals
-
-Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{cal.res} was set to \code{TRUE} in the control of the function call
+Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
 }

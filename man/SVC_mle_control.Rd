@@ -2,13 +2,23 @@
 % Please edit documentation in R/SVC_mle.R
 \name{SVC_mle_control}
 \alias{SVC_mle_control}
+\alias{SVC_mle_control.default}
+\alias{SVC_mle_control.SVC_mle}
 \title{Set Parameters for \code{SVC_mle}}
 \usage{
-SVC_mle_control(cov.name = c("exp"), tapering = NULL, cl = NULL,
-  init = NULL, lower = NULL, upper = NULL, cal.res = FALSE, ...)
+SVC_mle_control(...)
+
+\method{SVC_mle_control}{default}(cov.name = c("exp", "sph"),
+  tapering = NULL, cl = NULL, init = NULL, lower = NULL,
+  upper = NULL, save.fitted = FALSE, profileLik = FALSE,
+  mean.est = c("GLS", "OLS"), pc.prior = NULL, ...)
+
+\method{SVC_mle_control}{SVC_mle}(object, ...)
 }
 \arguments{
-\item{cov.name}{name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential is supported.}
+\item{...}{further parameters yet to be implemented}
+
+\item{cov.name}{name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential and \code{"exp"} for spherical covariance functions are supported.}
 
 \item{tapering}{if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.}
 
@@ -20,9 +30,15 @@ SVC_mle_control(cov.name = c("exp"), tapering = NULL, cl = NULL,
 
 \item{upper}{upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.}
 
-\item{cal.res}{logical. If \code{TRUE}, calculates the residuals after MLE.}
+\item{save.fitted}{logical. If \code{TRUE}, calculates the fitted values after MLE and saves them.}
 
-\item{...}{further parameters yet to be implemented}
+\item{profileLik}{logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.}
+
+\item{mean.est}{if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estiamte.}
+
+\item{pc.prior}{takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea Simpson and Fulgstad.}
+
+\item{object}{An object of class \code{SVC_mle}. The function then extracts the control settings from the particular function call used to compute \code{object}.}
 }
 \value{
 A list with which \code{\link{SVC_mle}} can be controlled
