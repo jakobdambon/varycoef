@@ -124,7 +124,7 @@ boxplot(mb, unit = "ms", log = TRUE, xlab = "tapering", ylab = "time (millisecon
 (var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
 
 ## ----scale initials------------------------------------------------------
-scale.init <- 0.4
+scale.init <- 0.2
 
 ## ----joint initials------------------------------------------------------
 init <- c(rep(c(scale.init, var.init), p), # GRFs scales and variances
@@ -141,21 +141,25 @@ control$init <- init
 # create new
 control <- SVC_mle_control(init = init)
 
-## ----overwrite cal.res---------------------------------------------------
+## ----overwrite save.fitted-----------------------------------------------
 # default
-control$cal.res
+control$save.fitted
 
 # overwrite
-control$cal.res <- TRUE
+control$save.fitted <- TRUE
+
+## ----show profileLik-----------------------------------------------------
+# default
+control$profileLik
 
 ## ----SVC MLE-------------------------------------------------------------
 fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 
 class(fit)
 
-# comparison of estimated and true parameters
-rbind(fit$MLE$optim.output$par, 
-      c(pars[, "scale"], pars[, "var"], nugget.var, pars[, "mu"]))
+# estimated parameters
+cov_par(fit) # covariance parameters
+coef(fit)    # mean effects
 
 ## ----make predictions----------------------------------------------------
 # calling predictions without specifying new locations (newlocs) or 

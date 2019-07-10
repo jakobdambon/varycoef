@@ -22,7 +22,7 @@ The package `varycoef` contains methods to model and estimate varying coefficien
 
 - only *spatially* varying coefficient (SVC)
 
-- only an MLE approach to model SVC and to give predictions. 
+- different MLE approaches to model SVC and to give predictions. 
 
 
 ### Spatially Varying Coefficient Models
@@ -47,9 +47,9 @@ $$\textbf y(\textbf s) = \textbf X  \beta(\textbf s) + \epsilon( \textbf s)$$
 where $\textbf X$ is our model matrix. Then we can write down the model divided into an fixed effect part and a random effect part:
 
 
-$$\textbf y(\textbf s) = \textbf X  \mu + \textbf W  \tilde \beta(\textbf s) + \epsilon( \textbf s)$$
+$$\textbf y(\textbf s) = \textbf X  \mu + \textbf W  \eta(\textbf s) + \epsilon( \textbf s)$$
 
-where $\tilde{\beta}$ is a mean-zero GRF. Note that both model are the same if $\textbf X  = \textbf W$. Thus, we can specify options 1 to 3 from above by in- or excluding columns of $\textbf X$ or $\textbf W$.
+where $\eta$ is the joint mean-zero GRF. Note that both model are the same if $\textbf X  = \textbf W$. Thus, we can specify options 1 to 3 from above by in- or excluding columns of $\textbf X$ or $\textbf W$, respectively.
 
 
 
@@ -240,11 +240,11 @@ For the variance, we take the estimated variance of the OLS method, i.e
 (var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
 ```
 
-For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an initial scale of a third or fourth the maximum distance. So in our case, we take
+For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an initial scale of 
 
 
 ```{r scale initials}
-scale.init <- 0.4
+scale.init <- 0.2
 ```
 
 
@@ -279,20 +279,35 @@ control <- SVC_mle_control(init = init)
 The optimization function `optim` allows with its chosen method `"L-BFGS-B"` the usage of lower and upper bounds. The lower and upper bounds for each parameter can be given in correspondence to the order in the initial values.
 
 
-#### Calculate Residuals
+#### Save Fitted Values
 
-The argument `cal.res` takes logical values and decides whether the residuals of the SVC model should be computed. This takes some extra time, but can be useful since an extraction of those residuals is possible using a method or `residuals`. 
+The argument `save.fitted` takes logical values and decides whether the fitted values of the SVC model after the MLE should be computed. This takes some extra time, but can be useful since an extraction of those fitted values as well as the residuals is possible using a methods `fitted` or `residuals`. 
 
-```{r overwrite cal.res}
+```{r overwrite save.fitted}
 # default
-control$cal.res
+control$save.fitted
 
 # overwrite
-control$cal.res <- TRUE
+control$save.fitted <- TRUE
 ```
 
-Additionally, one can use the `fitted` to extract the fitted values from the `SVC_mle` object for the training data set.
+#### Profile Likelihood
 
+In some SVC models, it might be an advantage to optimize not over all parameters, i.e. the mean and the covariance parameters. The motivation here is a dimension reduction of the parameter space. Setting `profileLik` to `TRUE`, the optimization will be done using the profile Likelihood of the covariance parameters. The mean effects are then implicitly calculated using the *generalized least squares estimate*. 
+
+```{r show profileLik}
+# default
+control$profileLik
+```
+
+**Attention:** Since the number of parameters is reduced, one should also be aware that the initial values as well as the lower and upper bounds are given correctly. 
+
+
+#### Regularizing Priors
+
+We implemented a usage of penalizing complexity priors. The argument `pc.prior` takes a vector of length 4 as an input where the values are $\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma$ to compute penalized complexity priors. One wants to penalize the lower tail on the range parameter as well as the upper tail of the standard deviation:
+
+$$P(\rho < \rho_0) = \alpha_\rho, \quad P(\sigma > \sigma_0) = \alpha_\sigma.$$
 
 ### Example: MLE of full SVC 
 
@@ -304,9 +319,9 @@ fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 
 class(fit)
 
-# comparison of estimated and true parameters
-rbind(fit$MLE$optim.output$par, 
-      c(pars[, "scale"], pars[, "var"], nugget.var, pars[, "mu"]))
+# estimated parameters
+cov_par(fit) # covariance parameters
+coef(fit)    # mean effects
 ```
 
 
