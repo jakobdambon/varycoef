@@ -21,6 +21,8 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 | 0.2.2    | BUGFIX: Mulitple Observations at locations. New residuals and fitted methods for SVC_mle, SVC_mle with formula call, warning on call without control | 5th of June 2019 |
 | 0.2.3    | add profile LL MLE, add functions to extract coefs and covariance parameters | 10th of July 2019 |
 | 0.2.4    | add SVC_mle.control for SVC_mle object, update vignette | 10th of July 2019 |
+| 0.2.5    | new handling of multiple observations | 10th of July 2019 |
+| 0.2.6    | predictive variance | 5th of September 2019 |
 | 0.3.0    | add summary, printing and plotting functions for `SVC_mle` objects | TBD |
 | 0.4.0    | parallelization using `optim.parallel` | TBD |
 | 0.5.0    | SVC INLA | TBD |
