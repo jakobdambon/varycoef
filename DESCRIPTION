@@ -1,7 +1,7 @@
 Package: varycoef
 Type: Package
 Title: varycoef: An R package for varying coefficient models
-Version: 0.2.4
+Version: 0.2.6
 Authors@R: as.person(c(
     "Jakob Dambon <jakob.dambon@math.uzh.ch> [aut, cre]", 
     "Fabio Sigrist [ctb]", 

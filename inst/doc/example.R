@@ -47,7 +47,7 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   locs <- coordinates(sp.SVC)
   if (is.null(taper.range)) {
-    d <- spam::as.spam(dist(locs))
+    d <- as.matrix(dist(locs))
   } else {
     d <- spam::nearest.dist(locs, delta = taper.range)
   }
@@ -56,11 +56,9 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   # get covariance function
   raw.cov.func <- varycoef:::MLE.cov.func("exp")
   
-  cov.func <- list(
-    # covariance function
-    cov.func = function(x) raw.cov.func(d, x), 
-    # number of observations at single location (needed for nugget)
-    ns = NULL)
+  # covariance function
+  cov.func <- function(x) raw.cov.func(d, x)
+    
   
   W <- X
   
@@ -78,7 +76,7 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   x <- c(rep(1, 2*p+1), rep(0, p))
   
-  S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W)
+  S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W, taper)
   
   nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, taper = taper)
   
@@ -268,15 +266,19 @@ fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = contro
 ## ----give predictions----------------------------------------------------
 set.seed(5)
 newlocs <- matrix(c(0, 0), ncol = 2)
-X <- matrix(c(1, rnorm(pX-1)), ncol = pX)
-W <- X[, 1:pW]
-
-pred.SVC <- predict(fit, newlocs = newlocs)
 
 
-ind.next <- apply((coordinates(sp.SVC) == 0) , 1, all)
+# only SVC prediction without y prediction
+(pred.SVC <- predict(fit, newlocs = newlocs))
 
-sp.SVC[ind.next, ]
 
-pred.SVC
+
+# SVC prediction and y prediction (with predictive variance)
+newX <- matrix(c(1, rnorm(pX-1)), ncol = pX)
+newW <- matrix(newX[, 1:pW], ncol = pW)
+
+(pred.SVC <- predict(fit, 
+                     newlocs = newlocs, 
+                     newX = newX, newW = newW, 
+                     compute.y.var = TRUE))
 

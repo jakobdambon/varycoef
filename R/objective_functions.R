@@ -8,7 +8,7 @@ profile.n2LL <- function(x, cov_func, outer.W, y, X, W, mean.est,
   n <- length(y)
 
   # compute covariance matrices
-  Sigma <- Sigma_y(x, pW, cov_func, outer.W, taper = taper)
+  Sigma <- spam::as.spam(Sigma_y(x, pW, cov_func, outer.W, taper = taper))
 
   # calculate Cholesky-Decompisition
   cholS <- spam::chol.spam(Sigma)
@@ -61,7 +61,7 @@ n2LL <- function(x, cov_func, outer.W, y, X, W,
 
 
   # calculate Cholesky-Decompisition
-  cholS <- spam::chol.spam(Sigma)
+  cholS <- spam::chol.spam(spam::as.spam(Sigma))
 
   # get mu
   mu <- x[1 + 2*pW + 1:pX]

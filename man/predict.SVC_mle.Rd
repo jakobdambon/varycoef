@@ -5,7 +5,7 @@
 \title{Prediction of SVC (and response variable)}
 \usage{
 \method{predict}{SVC_mle}(object, newlocs = NULL, newX = NULL,
-  newW = NULL, backtransform = TRUE, ...)
+  newW = NULL, compute.y.var = FALSE, ...)
 }
 \arguments{
 \item{object}{output of \code{\link{SVC_mle}}}
@@ -16,7 +16,7 @@
 
 \item{newW}{optional matrix of dimension n' x pW.}
 
-\item{backtransform}{logical. If standardization in function call of \code{SVC_mle} took place, backtransform results in prediciton. Does not cover transformation on model formula (e.g. log-transformation of response), only standardization of covariates.}
+\item{compute.y.var}{logical. If y will be estimated and \code{TRUE}, the standard deviation of each estimate will be computed.}
 
 \item{...}{further arguments}
 }
@@ -24,7 +24,8 @@
 returns a data frame of n' rows and with columns
 \itemize{
   \item \code{SVC_1, ..., SVC_p}, i.e. the predicted SVC at locations \code{newlocs}
-  \item \code{y.pred}, if \code{newX} is provided
+  \item \code{y.pred}, if \code{newX} and \code{newW} are provided
+  \item \code{y.var}, if \code{newX} and \code{newW} are provided and \code{compute.y.var} is set to \code{TRUE}.
   \item \code{loc_x, loc_y}, the locations of the predictions
 }
 }

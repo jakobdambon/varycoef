@@ -17,51 +17,57 @@ MLE.cov.func <- function(cov.name) {
 #' @importFrom stats coef lm
 MLE_computation <- function(y, X, locs, W,
                             control,
-                            ns = NULL,
                             optim.control) {
 
 
   pW <- ncol(W)
   pX <- ncol(X)
 
-  # check for multiple observations at locations
-  if (nrow(unique(locs)) < nrow(locs)) {
-    warning("Multiple Observations at single location detected.\nAggregating Observations for MLE!")
-    # aggregating by location
-    u.locs <- unique(locs)
-    ch.locs <- apply(locs, 1, paste0, collapse = "x")
-    u.ch.locs <- unique(ch.locs)
-
-    ns <- as.numeric(table(ch.locs)[u.ch.locs])
-
-    J <- spam::diag.spam(nrow(locs))
-    J@colindices <- unlist(mapply(rep, times = ns, x = 1:nrow(u.locs)))
-    J@dimension[2] <- nrow(u.locs)
-
-    X.tilde <- sapply(1:pX, function(j){
-      spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(X[, j]))%*%J)
-    })
-
-    W.tilde <- if (is.null(W)) {
-      NULL
-    } else {
-      sapply(1:pW, function(j){
-        spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(W[, j]))%*%J)
-      })
-    }
-
-    return(MLE_computation(y = spam::crossprod.spam(J, y),
-                           X = X.tilde,
-                           locs = u.locs,
-                           control = control,
-                           W = W.tilde,
-                           ns = ns,
-                           optim.control = optim.control))
-  }
+  # # check for multiple observations at locations
+  # if (nrow(unique(locs)) < nrow(locs)) {
+  #   warning("Multiple Observations at single location detected.\nAggregating Observations for MLE!")
+  #   # aggregating by location
+  #   u.locs <- unique(locs)
+  #   ch.locs <- apply(locs, 1, paste0, collapse = "x")
+  #   u.ch.locs <- unique(ch.locs)
+  #
+  #   ns <- as.numeric(table(ch.locs)[u.ch.locs])
+  #
+  #   J <- spam::diag.spam(as.numeric(unlist(mapply(rep, times = ns, x = 1/ns))))
+  #   J@colindices <- as.numeric(unlist(mapply(rep, times = ns, x = 1:nrow(u.locs))))
+  #   J@dimension[2] <- nrow(u.locs)
+  #
+  #   ord <- as.numeric(unlist(sapply(u.ch.locs, function(loc) which(ch.locs %in% loc))))
+  #
+  #   # X.tilde <- sapply(1:pX, function(j){
+  #   #   spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(X[ord, j]))%*%J)
+  #   # })
+  #
+  #   X.tilde <- spam::crossprod.spam(J, X[ord, ])
+  #
+  #
+  #   W.tilde <- if (is.null(W)) {
+  #     NULL
+  #   } else {
+  #     # sapply(1:pW, function(j){
+  #     #   spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(W[ord, j]))%*%J)
+  #     # })
+  #
+  #     spam::crossprod.spam(J, W[ord, ])
+  #   }
+  #
+  #   return(MLE_computation(y = spam::crossprod.spam(J, y[ord]),
+  #                          X = X.tilde,
+  #                          locs = u.locs,
+  #                          control = control,
+  #                          W = W.tilde,
+  #                          ns = NULL,
+  #                          optim.control = optim.control))
+  # }
 
   # define distance matrix
   if (is.null(control$tapering)) {
-    d <- spam::as.spam(stats::dist(locs))
+    d <- as.matrix(stats::dist(locs))
   } else {
     d <- spam::nearest.dist(locs, delta = control$tapering)
   }
@@ -70,15 +76,8 @@ MLE_computation <- function(y, X, locs, W,
   # get covariance function
   raw.cov.func <- MLE.cov.func(control$cov.name)
 
-  cov.func <- list(
-    # covariance function
-    cov.func = function(x) raw.cov.func(d, x),
-    # number of observations at single location (needed for nugget)
-    ns = ns)
-
-  # get outer matrices of observations
-  outer.W <- lapply(1:pW, function(j) W[, j]%o%W[, j])
-
+  # covariance function
+  cov.func <- function(x) raw.cov.func(d, x)
 
   # init
   if (is.null(control$init)) {
@@ -112,21 +111,24 @@ MLE_computation <- function(y, X, locs, W,
 
 
   # tapering?
-  taper <- if(is.null(control$taper)) {
-    # without tapering
-    NULL
+  if (is.null(control$tapering)) {
+    taper <- NULL
+    outer.W <- lapply(1:pW, function(j) W[, j]%o%W[, j])
   } else {
-    # with tapering (in that case d is of class spam)
-    switch(control$cov.name,
-           "exp" = spam::cov.wend1(d, c(control$taper, 1, 0)),
-           "sph" =
-             {
-               h <- d
-               h@entries <- rep(1, length(h@entries))
-               h
-             })
-
+    taper <- switch(control$cov.name,
+                    "exp" = spam::cov.wend1(d, c(control$taper, 1, 0)),
+                    "sph" =
+                      {
+                        h <- d
+                        h@entries <- rep(1, length(h@entries))
+                        h
+                      })
+    outer.W <- lapply(1:pW, function(j) {
+      (W[, j]%o%W[, j]) * spam::as.spam(d<control$tapering)
+    })
   }
+
+
 
   # holds parameters we optimize over
   path.env <- new.env(parent = emptyenv())
@@ -208,8 +210,7 @@ MLE_computation <- function(y, X, locs, W,
                                locs = locs,
                                control = control,
                                optim.control = optim.control,
-                               W = W,
-                               ns = ns),
+                               W = W),
               comp.args = list(outer.W = outer.W,
                                lower = lower,
                                upper = upper,
@@ -416,8 +417,7 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
                                  locs = locs,
                                  W = W,
                                  control = control,
-                                 optim.control = optim.control,
-                                 ns = NULL)
+                                 optim.control = optim.control)
 
   object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
 
@@ -462,12 +462,13 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
 #' @param newlocs       matrix of dimension n' x 2. These are the new locations the SVCs are predicted for. If \code{NULL}, the locations from the \code{SVC_mle} (i.e. \code{locs}) are considered.
 #' @param newX          optional matrix of dimension n' x pX. If provided, besides the predicted SVC, the function also returns the predicted response variable.
 #' @param newW          optional matrix of dimension n' x pW.
-#' @param backtransform logical. If standardization in function call of \code{SVC_mle} took place, backtransform results in prediciton. Does not cover transformation on model formula (e.g. log-transformation of response), only standardization of covariates.
+#' @param compute.y.var logical. If y will be estimated and \code{TRUE}, the standard deviation of each estimate will be computed.
 #' @param ...           further arguments
 #' @return returns a data frame of n' rows and with columns
 #' \itemize{
 #'   \item \code{SVC_1, ..., SVC_p}, i.e. the predicted SVC at locations \code{newlocs}
-#'   \item \code{y.pred}, if \code{newX} is provided
+#'   \item \code{y.pred}, if \code{newX} and \code{newW} are provided
+#'   \item \code{y.var}, if \code{newX} and \code{newW} are provided and \code{compute.y.var} is set to \code{TRUE}.
 #'   \item \code{loc_x, loc_y}, the locations of the predictions
 #' }
 #'
@@ -477,7 +478,7 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
 #' @importFrom fields rdist
 #' @importFrom stats dist sd
 #' @export
-predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, backtransform = TRUE, ...) {
+predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, compute.y.var = FALSE, ...) {
 
   mu <- coef(object)
   cov.par <- cov_par(object)
@@ -492,39 +493,65 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
   if (is.null(newlocs)) {
     # compute untapered distance matrix
     newlocs <- object$MLE$call.args$locs
-    d <- dd <- as.matrix(dist(newlocs))
-    d[base::upper.tri(dd, diag = TRUE)] <- 0
+    d <- d_cross <- as.matrix(dist(newlocs))
     n.new <- n
   } else {
     d <- as.matrix(stats::dist(object$MLE$call.args$locs))
-    d[base::upper.tri(d)] <- 0
-    dd <- fields::rdist(newlocs, object$MLE$call.args$locs)
+    d_cross <- fields::rdist(newlocs, object$MLE$call.args$locs)
     n.new <- nrow(newlocs)
   }
 
   # covariance function (not tapered)
   raw.cf <- MLE.cov.func(object$MLE$call.args$control$cov.name)
 
+
+
+  if (is.null(object$MLE$call.args$control$taper)) {
+    taper <- NULL
+
+    # cross-covariance (newlocs and locs)
+    cf_cross <- function(x) raw.cf(d_cross, x)
+
+  } else {
+    taper <- switch(object$MLE$call.args$control$cov.name,
+                    "exp" = spam::cov.wend1(d, c(object$MLE$call.args$control$taper, 1, 0)),
+                    "sph" =
+                      {
+                        spam::as.spam(d<object$MLE$call.args$control$taper)
+                      })
+
+    taper_cross <- switch(object$MLE$call.args$control$cov.name,
+                      "exp" = spam::cov.wend1(d_cross, c(object$MLE$call.args$control$taper, 1, 0)),
+                      "sph" =
+                        {
+                          spam::as.spam(d_cross<object$MLE$call.args$control$taper)
+                        })
+
+    # cross-covariance (newlocs and locs)
+    cf_cross <- function(x) raw.cf(d_cross, x)*taper_cross
+  }
+
   # covariance y
-  cf <- function(x) raw.cf(spam::as.spam(d), x)
-  # cross-covariance (newlocs and locs)
-  cf_dd <- function(x) raw.cf(dd, x)
+  cf <- function(x) raw.cf(d, x)
+
+
 
   cov_y <- Sigma_y(x = cov.par,
                    p = pW,
-                   cov_func = list(cov.func = cf, ns = object$MLE$call.args$ns),
-                   outer.W = object$MLE$comp.args$outer.W)
+                   cov_func = cf,
+                   outer.W = object$MLE$comp.args$outer.W,
+                   taper = taper)
 
 
   # cross-covariance beta' y
   cov_b_y <- Sigma_b_y(x = cov.par,
-                       cov.func = cf_dd,
+                       cov.func = cf_cross,
                        W = as.matrix(object$MLE$call.args$W),
                        n.new = n.new)
 
 
 
-  eff <- cov_b_y %*% spam::solve.spam(cov_y) %*%
+  eff <- cov_b_y %*% solve(as.matrix(cov_y)) %*%
     (object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
 
   eff <- matrix(eff, ncol = pW)
@@ -535,11 +562,82 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, ba
     stopifnot(pW == ncol(newW),
               pX == ncol(newX))
 
-    y.pred <- apply(as.matrix(newW) * eff, 1, sum) + newX %*% mu
+    y.pred <- apply(newW * eff, 1, sum) + newX %*% mu
 
-    out <- as.data.frame(cbind(eff, y.pred, newlocs))
-    colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "loc_x", "loc_y")
+    # computation of standard deviation fro each observation.
+    if (compute.y.var) {
+      # Have to compute
+      #
+      # var.y = Sigma_ynew - Sigma_ynew_y Sigma_y^-1 Sigma_y_ynew
+      #
+      # Sigma_ynew   = A
+      # Sigma_ynew_y = B
+      # Sigma_y      = C
+      # Sigma_y_ynew = D = t(C)
+
+
+      # Part B:
+      cov_ynew_y <- Sigma_y_y(cov.par,
+                            cov.func = cf_cross,
+                            X = object$MLE$call.args$W,
+                            newX = newW)
+
+      # Part A:
+
+      d_new <- as.matrix(stats::dist(newlocs))
+
+
+      if (is.null(object$MLE$call.args$control$taper)) {
+        outer.newW <- lapply(1:pW, function(j) {
+          (newW[, j]%o%newW[, j]) })
+      } else {
+        outer.newW <- lapply(1:pW, function(j) {
+          (newW[, j]%o%newW[, j]) * spam::as.spam(d_new<object$MLE$call.args$control$taper)})
+      }
+
+      if (is.null(object$MLE$call.args$control$taper)) {
+        taper_new <- NULL
+
+
+
+      } else {
+        taper_new <- switch(object$MLE$call.args$control$cov.name,
+                           "exp" = spam::cov.wend1(d_new, c(object$MLE$call.args$control$taper, 1, 0)),
+                           "sph" =
+                             {
+                               spam::as.spam(d_new<object$MLE$call.args$control$taper)
+                             })
+      }
+
+      # cross-covariance (newlocs and locs)
+      cf_new <- function(x) raw.cf(d_new, x)
+
+      cov_ynew <- Sigma_y(cov.par, pW,
+                          cf_new,
+                          outer.W = outer.newW,
+                          taper = taper_new)
+
+
+      # Part C: already calculated with cov_y
+
+
+      # Computation of variance of y
+      var.y <- diag(cov_ynew) - diag(cov_ynew_y %*% solve(cov_y) %*% t(cov_ynew_y))
+
+      # form out put
+      out <- as.data.frame(cbind(eff, y.pred, sqrt(var.y), newlocs))
+      colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "y.var", "loc_x", "loc_y")
+    } else {
+      out <- as.data.frame(cbind(eff, y.pred, newlocs))
+      colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "loc_x", "loc_y")
+    }
+
+
   } else {
+
+    if (compute.y.var)
+      warning("Please provide new X and W matrix to predict y and its standard deviation.")
+
     out <- as.data.frame(cbind(eff, newlocs))
     colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "loc_x", "loc_y")
   }
