@@ -625,7 +625,7 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, co
       var.y <- diag(cov_ynew) - diag(cov_ynew_y %*% solve(cov_y) %*% t(cov_ynew_y))
 
       # form out put
-      out <- as.data.frame(cbind(eff, y.pred, sqrt(var.y), newlocs))
+      out <- as.data.frame(cbind(eff, y.pred, var.y, newlocs))
       colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "y.var", "loc_x", "loc_y")
     } else {
       out <- as.data.frame(cbind(eff, y.pred, newlocs))
