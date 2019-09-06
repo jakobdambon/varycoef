@@ -1,0 +1,45 @@
+- errors when checking (for the moment at Rstudio level):
+
+.  checking for empty or unneeded directories
+   WARNING: Removing directory ‘varycoef/Meta’ which should only occur in
+     an installed package
+.  Error in 'Examples': Running examples in ‘varycoef-Ex.R’ failed
+
+
+- Vignette:
+    . added minor modifications, pls reject if unwanted
+
+    . Model 0 for full SVC? Better reference and structure of the three models (four)
+
+    .  consistency when to put the comment:
+
+    # default
+    control$save.fitted
+
+       vs
+
+    control$save.fitted  # default
+
+
+- help:
+
+    add help for `varycoef-package`
+    some redundancy with `SVC_mle.control` and `SVC_mle_control` 
+
+
+- Avoid using empty files for main_functions.R, SVC_function.R, and SVC_inla.R
+
+- exporting 'fullSVC_reggrid'?
+
+
+- additional methods for SVC_mle:
+      . print
+      . summary
+      . nobs
+      . logLik
+      . plot
+  (Gilles got some remarks that he should increase the number of methods...)
+
+
+
+ 

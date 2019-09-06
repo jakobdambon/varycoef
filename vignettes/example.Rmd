@@ -32,7 +32,7 @@ We define a *full SVC model* as
 
 $$y(s) = x^{(1)}(s)\beta_1(s) + ... + x^{(p)}(s)\beta_p(s) + \epsilon(s)$$
 
-with the coefficients represented by Gaussian random fields (GRF) $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_k^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect with variance $\tau^2$. 
+with the coefficients represented by Gaussian random fields (GRF) $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_j^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect (white noise) with variance $\tau^2$. 
 
 However, there are some cases, where the assumption of a full SVC model is not applicable. We want to give options for covariates w.r.t.:
 
@@ -238,7 +238,7 @@ For the variance, we take the estimated variance of the OLS method, i.e
 (var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
 ```
 
-For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot not model. Therefore we suggest to take an initial scale of 
+For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot model. Therefore we suggest to take an initial scale of 
 
 
 ```{r scale initials}
@@ -309,7 +309,7 @@ $$P(\rho < \rho_0) = \alpha_\rho, \quad P(\sigma > \sigma_0) = \alpha_\sigma.$$
 
 ### Example: MLE of full SVC 
 
-We can now start the MLE.
+We can now start the MLE. The following function call takes a few second.
 
 
 ```{r SVC MLE}
@@ -356,7 +356,7 @@ spplot(all.SVC[, paste0(rep(c("true.", "err.", "pred."), each = p),
 In this small example we already can see that the predicted SVC takes the general spatial structure of the true SVC. The error does not appear to have spatial structure for the SVC 2 and 3, respectively. However, the error for the intercept seems to have some spatial structure. If we increase the number of observations, the picture changes:
 
 
-```{r n2500 figure, fig.width=7, fig.height=7}
+```{r n2500 figure, fig.width=7, fig.height=7, echo=FALSE}
 knitr::include_graphics("figures/SVCs_result_n2500_p3.png")
 ```
 
