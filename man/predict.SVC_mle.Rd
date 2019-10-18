@@ -32,6 +32,71 @@ returns a data frame of n' rows and with columns
 \description{
 Prediction of SVC (and response variable)
 }
+\examples{
+## ---- toy example ----
+## sample data
+# setting seed for reproducibility
+set.seed(123)
+m <- 7
+# number of observations
+n <- m*m
+# number of SVC
+p <- 3
+# sample data
+y <- rnorm(n)
+X <- matrix(rnorm(n*p), ncol = p)
+# locations on a regular m-by-m-grid
+locs <- expand.grid(seq(0, 1, length.out = m),
+                    seq(0, 1, length.out = m))
+
+## preparing for maximum likelihood estimation (MLE)
+# controls specific to MLE
+control <- SVC_mle_control(
+  # initial values of optimization
+  init = rep(0.1, 2*p+1),
+  # using profile likelihood
+  profileLik = TRUE
+)
+
+# controls specific to optimization procedure, see help(optim)
+opt.control <- list(
+  # number of iterations (set to one for demonstration sake)
+  maxit = 1,
+  # tracing information
+  trace = 6
+)
+
+## starting MLE
+fit <- SVC_mle(y = y, X = X, locs = locs,
+               control = control,
+               optim.control = opt.control)
+
+## output: convergence code equal to 1, since maxit was only 1
+summary(fit)
+
+## prediction
+# new location
+newlocs <- matrix(0.5, ncol = 2, nrow = 1)
+
+# new data
+X.new <- matrix(rnorm(p), ncol = p)
+
+# predicting SVCs
+predict(fit, newlocs = newlocs)
+
+# predicting SVCs and calculating response
+predict(fit, newlocs = newlocs,
+        newX = X.new, newW = X.new)
+
+# predicting SVCs, calculating response and predictive variance
+predict(fit, newlocs = newlocs,
+        newX = X.new, newW = X.new,
+        compute.y.var = TRUE)
+
+}
 \seealso{
 \code{\link{SVC_mle}}
+}
+\author{
+Jakob Dambon
 }

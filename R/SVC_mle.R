@@ -291,15 +291,13 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #' @param init        numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects
 #' @param lower       lower bound for optim, default \code{NULL} sets the lower bounds to 1e-6 for covariance parameters and \code{-Inf} for mean parameters.
 #' @param upper       upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.
-#' @param save.fitted logical. If \code{TRUE}, calculates the fitted values after MLE and saves them.
+#' @param save.fitted logical. If \code{TRUE}, calculates the fitted values and residuals after MLE and saves them.
 #' @param profileLik  logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.
 #' @param mean.est    if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estiamte.
 #' @param pc.prior    takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea Simpson and Fulgstad.
 #' @param ...         further parameters yet to be implemented
 #'
 #' @return A list with which \code{\link{SVC_mle}} can be controlled
-#' @export
-#'
 #' @seealso \code{\link{SVC_mle}}
 #'
 #' @examples
@@ -307,6 +305,10 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #' # or
 #' control <- SVC_mle_control()
 #' control$init <- rep(0.3, 10)
+#'
+#' @author Jakob Dambon
+#'
+#' @export
 SVC_mle_control <- function(...) UseMethod("SVC_mle_control")
 
 
@@ -318,7 +320,7 @@ SVC_mle_control.default <- function(cov.name = c("exp", "sph"),
                                     init = NULL,
                                     lower = NULL,
                                     upper = NULL,
-                                    save.fitted = FALSE,
+                                    save.fitted = TRUE,
                                     profileLik = FALSE,
                                     mean.est = c("GLS", "OLS"),
                                     pc.prior = NULL, ...) {
@@ -386,10 +388,94 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #'
 #' @return Object of class \code{SVC_mle}
 #'
+#' @author Jakob Dambon
+#'
 #' @seealso \code{\link{predict.SVC_mle}}
 #'
+#' @examples
+#' ## ---- toy example ----
+#' ## sample data
+#' # setting seed for reproducibility
+#' set.seed(123)
+#' m <- 7
+#' # number of observations
+#' n <- m*m
+#' # number of SVC
+#' p <- 3
+#' # sample data
+#' y <- rnorm(n)
+#' X <- matrix(rnorm(n*p), ncol = p)
+#' # locations on a regular m-by-m-grid
+#' locs <- expand.grid(seq(0, 1, length.out = m),
+#'                     seq(0, 1, length.out = m))
+#'
+#' ## preparing for maximum likelihood estimation (MLE)
+#' # controls specific to MLE
+#' control <- SVC_mle_control(
+#'   # initial values of optimization
+#'   init = rep(0.1, 2*p+1),
+#'   # using profile likelihood
+#'   profileLik = TRUE
+#' )
+#'
+#' # controls specific to optimization procedure, see help(optim)
+#' opt.control <- list(
+#'   # number of iterations (set to one for demonstration sake)
+#'   maxit = 1,
+#'   # tracing information
+#'   trace = 6
+#' )
+#'
+#' ## starting MLE
+#' fit <- SVC_mle(y = y, X = X, locs = locs,
+#'                control = control,
+#'                optim.control = opt.control)
+#'
+#' ## output: convergence code equal to 1, since maxit was only 1
+#' summary(fit)
+#'
+#' \donttest{
+#' ## ---- real data example ----
+#' require(sp)
+#' ## get data set
+#' data("meuse", package = "sp")
+#'
+#' # construct data matrix and response, scale locations
+#' y <- log(meuse$cadmium)
+#' X <- model.matrix(~1+dist+lime+elev, data = meuse)
+#' locs <- as.matrix(meuse[, 1:2])/1000
+#'
+#'
+#' ## starting MLE
+#' # the next call takes a couple of seconds
+#' fit <- SVC_mle(y = y, X = X, locs = locs,
+#'                # has 4 fixed effects, but only 3 random effects (SVC)
+#'                # elev is missing in SVC
+#'                W = X[, 1:3],
+#'                control = SVC_mle_control(
+#'                  # inital values for 3 SVC
+#'                  # 7 = (3 * 2 covariance parameters + nugget)
+#'                  init = c(rep(c(0.4, 0.2), 3), 0.2),
+#'                  profileLik = TRUE
+#'                ))
+#'
+#' ## summary and residual output
+#' summary(fit)
+#' plot(fit)
+#'
+#' ## predict
+#' # new locations
+#' newlocs <- expand.grid(
+#'   x = seq(min(locs[, 1]), max(locs[, 1]), length.out = 30),
+#'   y = seq(min(locs[, 2]), max(locs[, 2]), length.out = 30))
+#' # predict SVC for new locations
+#' SVC <- predict(fit, newlocs = as.matrix(newlocs))
+#' # visualization
+#' sp.SVC <- SVC
+#' coordinates(sp.SVC) <- ~loc_x+loc_y
+#' spplot(sp.SVC, colorkey = TRUE)
+#' }
 #' @import spam
-#' @import methods
 #' @importFrom stats dist optim
 #' @export
 SVC_mle <- function(...) UseMethod("SVC_mle")
@@ -435,7 +521,7 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
 #' @rdname SVC_mle
 #' @export
 SVC_mle.formula <- function(formula, data, RE_formula = NULL,
-                            locs, control, optim.control, ...) {
+                            locs, control, optim.control = list(), ...) {
 
 
   X <- as.matrix(model.matrix(formula, data = data))
@@ -473,6 +559,69 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
 #' }
 #'
 #' @seealso \code{\link{SVC_mle}}
+#'
+#' @author Jakob Dambon
+#'
+#' @examples
+#' ## ---- toy example ----
+#' ## sample data
+#' # setting seed for reproducibility
+#' set.seed(123)
+#' m <- 7
+#' # number of observations
+#' n <- m*m
+#' # number of SVC
+#' p <- 3
+#' # sample data
+#' y <- rnorm(n)
+#' X <- matrix(rnorm(n*p), ncol = p)
+#' # locations on a regular m-by-m-grid
+#' locs <- expand.grid(seq(0, 1, length.out = m),
+#'                     seq(0, 1, length.out = m))
+#'
+#' ## preparing for maximum likelihood estimation (MLE)
+#' # controls specific to MLE
+#' control <- SVC_mle_control(
+#'   # initial values of optimization
+#'   init = rep(0.1, 2*p+1),
+#'   # using profile likelihood
+#'   profileLik = TRUE
+#' )
+#'
+#' # controls specific to optimization procedure, see help(optim)
+#' opt.control <- list(
+#'   # number of iterations (set to one for demonstration sake)
+#'   maxit = 1,
+#'   # tracing information
+#'   trace = 6
+#' )
+#'
+#' ## starting MLE
+#' fit <- SVC_mle(y = y, X = X, locs = locs,
+#'                control = control,
+#'                optim.control = opt.control)
+#'
+#' ## output: convergence code equal to 1, since maxit was only 1
+#' summary(fit)
+#'
+#' ## prediction
+#' # new location
+#' newlocs <- matrix(0.5, ncol = 2, nrow = 1)
+#'
+#' # new data
+#' X.new <- matrix(rnorm(p), ncol = p)
+#'
+#' # predicting SVCs
+#' predict(fit, newlocs = newlocs)
+#'
+#' # predicting SVCs and calculating response
+#' predict(fit, newlocs = newlocs,
+#'         newX = X.new, newW = X.new)
+#'
+#' # predicting SVCs, calculating response and predictive variance
+#' predict(fit, newlocs = newlocs,
+#'         newX = X.new, newW = X.new,
+#'         compute.y.var = TRUE)
 #'
 #' @import spam
 #' @importFrom fields rdist
@@ -551,7 +700,7 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, co
 
 
 
-  eff <- cov_b_y %*% solve(as.matrix(cov_y)) %*%
+  eff <- cov_b_y %*% solve(cov_y) %*%
     (object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
 
   eff <- matrix(eff, ncol = pW)
@@ -646,72 +795,5 @@ predict.SVC_mle <- function(object, newlocs = NULL, newX = NULL, newW = NULL, co
 
   return(out)
 }
-
-
-
-#' @title Extact Model Residuals
-#'
-#' @description Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
-#'
-#' @param object \code{\link{SVC_mle}} object
-#' @param ...    further arguments
-#'
-#' @return numeric, residuals of model
-#' @export
-residuals.SVC_mle <- function(object, ...) {
-  stopifnot(!is.null(object$residuals))
-  return(object$residuals)
-}
-
-
-
-
-#' @title Extact Model Fitted Values
-#'
-#' @description Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
-#'
-#' @param object \code{\link{SVC_mle}} object
-#' @param ...    further arguments
-#'
-#' @return data frame, fitted values to given data, i.e. the SVC as well as the response and their locations
-#' @export
-fitted.SVC_mle <- function(object, ...) {
-  stopifnot(!is.null(object$fitted))
-  return(object$fitted)
-}
-
-
-
-
-#' @title Extact Mean Effects
-#'
-#' @description Method to extract the mean effects from an \code{\link{SVC_mle}} object.
-#'
-#' @param object \code{\link{SVC_mle}} object
-#' @param ...    further arguments
-#'
-#' @return vector with mean effects, i.e. \eqn{\mu} from \code{\link{SVC_mle}}
-#' @export
-coef.SVC_mle <- function(object, ...) {
-  return(as.numeric(object$coefficients))
-}
-
-
-
-
-#' @title Extact Covariance Parameters
-#'
-#' Method to extract the covariance parameters from an \code{\link{SVC_mle}} object.
-#'
-#' @param object \code{\link{SVC_mle}} object
-#' @param ...    further arguments
-#'
-#' @return vector with covariance parameters
-#' @export
-cov_par <- function(object, ...) {
-  return(as.numeric(object$cov.par))
-}
-
-
 
 

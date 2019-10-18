@@ -10,7 +10,7 @@ SVC_mle_control(...)
 
 \method{SVC_mle_control}{default}(cov.name = c("exp", "sph"),
   tapering = NULL, cl = NULL, init = NULL, lower = NULL,
-  upper = NULL, save.fitted = FALSE, profileLik = FALSE,
+  upper = NULL, save.fitted = TRUE, profileLik = FALSE,
   mean.est = c("GLS", "OLS"), pc.prior = NULL, ...)
 
 \method{SVC_mle_control}{SVC_mle}(object, ...)
@@ -30,7 +30,7 @@ SVC_mle_control(...)
 
 \item{upper}{upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.}
 
-\item{save.fitted}{logical. If \code{TRUE}, calculates the fitted values after MLE and saves them.}
+\item{save.fitted}{logical. If \code{TRUE}, calculates the fitted values and residuals after MLE and saves them.}
 
 \item{profileLik}{logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.}
 
@@ -51,7 +51,11 @@ control <- SVC_mle_control(init = rep(0.3, 10))
 # or
 control <- SVC_mle_control()
 control$init <- rep(0.3, 10)
+
 }
 \seealso{
 \code{\link{SVC_mle}}
+}
+\author{
+Jakob Dambon
 }

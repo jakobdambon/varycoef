@@ -12,7 +12,7 @@ SVC_mle(...)
   optim.control = list(), ...)
 
 \method{SVC_mle}{formula}(formula, data, RE_formula = NULL, locs,
-  control, optim.control, ...)
+  control, optim.control = list(), ...)
 }
 \arguments{
 \item{...}{further arguments}
@@ -55,6 +55,93 @@ where:
 
 The MLE is done by calling the function \code{optim}.
 }
+\examples{
+## ---- toy example ----
+## sample data
+# setting seed for reproducibility
+set.seed(123)
+m <- 7
+# number of observations
+n <- m*m
+# number of SVC
+p <- 3
+# sample data
+y <- rnorm(n)
+X <- matrix(rnorm(n*p), ncol = p)
+# locations on a regular m-by-m-grid
+locs <- expand.grid(seq(0, 1, length.out = m),
+                    seq(0, 1, length.out = m))
+
+## preparing for maximum likelihood estimation (MLE)
+# controls specific to MLE
+control <- SVC_mle_control(
+  # initial values of optimization
+  init = rep(0.1, 2*p+1),
+  # using profile likelihood
+  profileLik = TRUE
+)
+
+# controls specific to optimization procedure, see help(optim)
+opt.control <- list(
+  # number of iterations (set to one for demonstration sake)
+  maxit = 1,
+  # tracing information
+  trace = 6
+)
+
+## starting MLE
+fit <- SVC_mle(y = y, X = X, locs = locs,
+               control = control,
+               optim.control = opt.control)
+
+## output: convergence code equal to 1, since maxit was only 1
+summary(fit)
+
+\donttest{
+## ---- real data example ----
+require(sp)
+## get data set
+data("meuse", package = "sp")
+
+# construct data matrix and response, scale locations
+y <- log(meuse$cadmium)
+X <- model.matrix(~1+dist+lime+elev, data = meuse)
+locs <- as.matrix(meuse[, 1:2])/1000
+
+
+## starting MLE
+# the next call takes a couple of seconds
+fit <- SVC_mle(y = y, X = X, locs = locs,
+               # has 4 fixed effects, but only 3 random effects (SVC)
+               # elev is missing in SVC
+               W = X[, 1:3],
+               control = SVC_mle_control(
+                 # inital values for 3 SVC
+                 # 7 = (3 * 2 covariance parameters + nugget)
+                 init = c(rep(c(0.4, 0.2), 3), 0.2),
+                 profileLik = TRUE
+               ))
+
+## summary and residual output
+summary(fit)
+plot(fit)
+
+## predict
+# new locations
+newlocs <- expand.grid(
+  x = seq(min(locs[, 1]), max(locs[, 1]), length.out = 30),
+  y = seq(min(locs[, 2]), max(locs[, 2]), length.out = 30))
+# predict SVC for new locations
+SVC <- predict(fit, newlocs = as.matrix(newlocs))
+# visualization
+sp.SVC <- SVC
+coordinates(sp.SVC) <- ~loc_x+loc_y
+spplot(sp.SVC, colorkey = TRUE)
+}
+}
 \seealso{
 \code{\link{predict.SVC_mle}}
+}
+\author{
+Jakob Dambon
 }

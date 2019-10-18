@@ -20,7 +20,7 @@ Sigma_y <- function(x, p, cov_func, outer.W, taper = NULL) {
   }
 
   if (!is.null(taper)) {
-    Sigma.tap <- taper * Sigma
+    Sigma.tap <- spam::as.spam(taper) * spam::as.spam(Sigma)
     # add lower tri. cov-matrices up and mirror them to get full cov-matrix
     # due to spam::nearest.dist design
     return(spam::lower.tri.spam(Sigma.tap) +
