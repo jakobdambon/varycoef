@@ -1,25 +1,36 @@
-Package: varycoef
 Type: Package
+Package: varycoef
 Title: Modeling Spatially Varying Coefficients
 Version: 0.2.10
-Authors@R: c(person("Jakob", "Dambon", role = c("aut", "cre"), 
-                    email = "jakob.dambon@math.uzh.ch"), 
-             person("Fabio", "Sigrist", role = c("ctb")),
-             person("Reinhard", "Furrer", role = c("ctb")))
-Depends:
-  spam
-Imports:
-  fields, 
-  sp,
-  RandomFields
-Suggests:
-  tmap,
-  knitr,
-  rmarkdown,
-  microbenchmark
-Description: Gives maximum likelihood estimation (MLE) method to estimate and predict spatially varying coefficient (SVC) Models. It supports covariance tapering by Furrer et al. (2006) <doi:10.1198/106186006X132178> to allow MLE on large data.
+Authors@R: 
+    c(person(given = "Jakob",
+             family = "Dambon",
+             role = c("aut", "cre"),
+             email = "jakob.dambon@math.uzh.ch"),
+      person(given = "Fabio",
+             family = "Sigrist",
+             role = "ctb"),
+      person(given = "Reinhard",
+             family = "Furrer",
+             role = "ctb"))
+Description: Gives maximum likelihood estimation (MLE) method to
+    estimate and predict spatially varying coefficient (SVC) Models. It
+    supports covariance tapering by Furrer et al. (2006)
+    <doi:10.1198/106186006X132178> to allow MLE on large data.
 License: GPL-2
+Depends:
+    spam
+Imports:
+    fields,
+    RandomFields,
+    sp
+Suggests:
+    knitr,
+    microbenchmark,
+    rmarkdown,
+    tmap
+VignetteBuilder: 
+    knitr
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
-VignetteBuilder: knitr
