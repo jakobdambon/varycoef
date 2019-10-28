@@ -18,6 +18,7 @@ Description: Gives maximum likelihood estimation (MLE) method to
     supports covariance tapering by Furrer et al. (2006)
     <doi:10.1198/106186006X132178> to allow MLE on large data.
 License: GPL-2
+URL: https://github.com/jakobdambon/varycoef
 Depends:
     spam
 Imports:
