@@ -26,5 +26,5 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 | 0.2.7    | add summary, printing, plotting functions, and other methods for `SVC_mle` objects | 16th of September 2019 |
 | 0.2.8    | Revisions for CRAN submission | 8th of October 2019 |
 | 0.2.9    | Final CRAN version | 10th of October 2019 |
-| 0.2.10   | parallelization using `optim.parallel`, citation info, orcID | 23rd of February 2020 |
+| 0.2.10   | parallelization using `optimParallel`, citation info, orcID | 23rd of February 2020 |
 | 0.2.11   | URL, Bugreports in DESCRIPTION | TBD |
