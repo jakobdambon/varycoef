@@ -8,10 +8,21 @@
 \usage{
 SVC_mle_control(...)
 
-\method{SVC_mle_control}{default}(cov.name = c("exp", "sph"),
-  tapering = NULL, cl = NULL, init = NULL, lower = NULL,
-  upper = NULL, save.fitted = TRUE, profileLik = FALSE,
-  mean.est = c("GLS", "OLS"), pc.prior = NULL, ...)
+\method{SVC_mle_control}{default}(
+  cov.name = c("exp", "sph"),
+  tapering = NULL,
+  parallel = NULL,
+  init = NULL,
+  lower = NULL,
+  upper = NULL,
+  save.fitted = TRUE,
+  profileLik = FALSE,
+  mean.est = c("GLS", "OLS"),
+  pc.prior = NULL,
+  extract_fun = FALSE,
+  hessian = FALSE,
+  ...
+)
 
 \method{SVC_mle_control}{SVC_mle}(object, ...)
 }
@@ -22,7 +33,7 @@ SVC_mle_control(...)
 
 \item{tapering}{if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.}
 
-\item{cl}{cluster for parallelization. Currently not supported.}
+\item{parallel}{list with arguments for parallelization, see documentation of \code{\link[optimParallel]{optimParallel}}}
 
 \item{init}{numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects}
 
@@ -34,17 +45,24 @@ SVC_mle_control(...)
 
 \item{profileLik}{logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.}
 
-\item{mean.est}{if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estiamte.}
+\item{mean.est}{if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estimate.}
 
-\item{pc.prior}{takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea Simpson and Fulgstad.}
+\item{pc.prior}{takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea by Fulgstad et al. (2018) \doi{10.1080/01621459.2017.1415907}.}
+
+\item{extract_fun}{logical. If \code{TRUE}, the function call of \code{\link{SVC_mle}} stops before the MLE and gives back the objective function of the MLE as well as all used arguments. If \code{FALSE}, regular MLE is conducted.}
+
+\item{hessian}{logical, feault is \code{FALSE}. Gives back Hessian matrix, see \link[stats]{optim}.}
 
 \item{object}{An object of class \code{SVC_mle}. The function then extracts the control settings from the particular function call used to compute \code{object}.}
 }
 \value{
-A list with which \code{\link{SVC_mle}} can be controlled
+A list with which \code{\link{SVC_mle}} can be controlled.
 }
 \description{
 Function to set up control parameters for \code{\link{SVC_mle}}
+}
+\details{
+The argument \code{extract_fun} is useful, when one wants to modify the objective function. Further, when trying to parallelize the optimization, it is useful to check whether a single evaluation of the objective function takes longer than 0.05 seconds, cf. Gerber and Furrer (2019) \doi{10.32614/RJ-2019-030}. Platform specific issues can be sorted out by the user by setting up their own optimization.
 }
 \examples{
 control <- SVC_mle_control(init = rep(0.3, 10))

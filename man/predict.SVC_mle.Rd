@@ -4,8 +4,14 @@
 \alias{predict.SVC_mle}
 \title{Prediction of SVC (and response variable)}
 \usage{
-\method{predict}{SVC_mle}(object, newlocs = NULL, newX = NULL,
-  newW = NULL, compute.y.var = FALSE, ...)
+\method{predict}{SVC_mle}(
+  object,
+  newlocs = NULL,
+  newX = NULL,
+  newW = NULL,
+  compute.y.var = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{output of \code{\link{SVC_mle}}}

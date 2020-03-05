@@ -15,6 +15,8 @@ MLE.cov.func <- function(cov.name) {
 
 ## ---- help function to do MLE for SVC model ----
 #' @importFrom stats coef lm
+#' @importFrom optimParallel optimParallel
+#' @importFrom parallel clusterExport clusterEvalQ
 MLE_computation <- function(y, X, locs, W,
                             control,
                             optim.control) {
@@ -23,47 +25,7 @@ MLE_computation <- function(y, X, locs, W,
   pW <- ncol(W)
   pX <- ncol(X)
 
-  # # check for multiple observations at locations
-  # if (nrow(unique(locs)) < nrow(locs)) {
-  #   warning("Multiple Observations at single location detected.\nAggregating Observations for MLE!")
-  #   # aggregating by location
-  #   u.locs <- unique(locs)
-  #   ch.locs <- apply(locs, 1, paste0, collapse = "x")
-  #   u.ch.locs <- unique(ch.locs)
-  #
-  #   ns <- as.numeric(table(ch.locs)[u.ch.locs])
-  #
-  #   J <- spam::diag.spam(as.numeric(unlist(mapply(rep, times = ns, x = 1/ns))))
-  #   J@colindices <- as.numeric(unlist(mapply(rep, times = ns, x = 1:nrow(u.locs))))
-  #   J@dimension[2] <- nrow(u.locs)
-  #
-  #   ord <- as.numeric(unlist(sapply(u.ch.locs, function(loc) which(ch.locs %in% loc))))
-  #
-  #   # X.tilde <- sapply(1:pX, function(j){
-  #   #   spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(X[ord, j]))%*%J)
-  #   # })
-  #
-  #   X.tilde <- spam::crossprod.spam(J, X[ord, ])
-  #
-  #
-  #   W.tilde <- if (is.null(W)) {
-  #     NULL
-  #   } else {
-  #     # sapply(1:pW, function(j){
-  #     #   spam::diag.spam(spam::crossprod.spam(J, spam::diag.spam(W[ord, j]))%*%J)
-  #     # })
-  #
-  #     spam::crossprod.spam(J, W[ord, ])
-  #   }
-  #
-  #   return(MLE_computation(y = spam::crossprod.spam(J, y[ord]),
-  #                          X = X.tilde,
-  #                          locs = u.locs,
-  #                          control = control,
-  #                          W = W.tilde,
-  #                          ns = NULL,
-  #                          optim.control = optim.control))
-  # }
+
 
   # define distance matrix
   if (is.null(control$tapering)) {
@@ -89,7 +51,7 @@ MLE_computation <- function(y, X, locs, W,
 
   # lower bound for optim
   if (is.null(control$lower)) {
-    lower <- c(rep(0.00001, 2*pW+1), rep(-Inf, pX))
+    lower <- c(rep(c(0.00001, 0), pW), 0.00001, rep(-Inf, pX))
   } else {
     lower <- control$lower
   }
@@ -99,14 +61,6 @@ MLE_computation <- function(y, X, locs, W,
     upper <- rep(Inf, 2*pW+1+ pX)
   } else {
     upper <- control$upper
-  }
-
-
-  # call optimization
-  if (is.null(control$cl)) {
-
-  } else {
-    stop("Parallelization not yet implemented.")
   }
 
 
@@ -130,14 +84,7 @@ MLE_computation <- function(y, X, locs, W,
 
 
 
-  # holds parameters we optimize over
-  path.env <- new.env(parent = emptyenv())
-  path.env$mu <- NULL
-  path.env$x  <- NULL
-  path.env$profileLik <- control$profileLik
-
-
-  # pc priors
+    # pc priors
   # ordering: pcp = c(\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma)
   pcp.neg2dens <- if (is.null(control$pc.prior)) {
     NULL
@@ -156,8 +103,51 @@ MLE_computation <- function(y, X, locs, W,
   }
 
 
+  # extract objective function
+  if (control$extract_fun) {
+    if (control$profileLik) {
+      # prepare for optimization by computing mean effect
+      mu.estimate <- if (control$mean.est == "GLS") {
+        NULL
+      } else { # Ordinary Least Squares
+        coef(lm(y~X-1))
+      }
+
+
+      obj_fun <- function(x, ...)
+        profile.n2LL(x, ...)
+      args <- list(
+        cov_func = cov.func,
+        outer.W  = outer.W,
+        y        = y,
+        X        = X,
+        W        = W,
+        mean.est = mu.estimate,
+        taper    = taper,
+        pc.dens  = pcp.neg2dens
+      )
+    } else {
+      obj_fun <- function(x, ...)
+        n2LL(x, ...)
+      args <- list(
+        cov_func = cov.func,
+        outer.W  = outer.W,
+        y        = y,
+        X        = X,
+        W        = W,
+        taper    = taper,
+        pc.dens  = pcp.neg2dens
+      )
+    }
+
+    return(list(
+      obj_fun = obj_fun,
+      args    = args
+    ))
+  }
 
   if (control$profileLik) {
+    # optimization over profile Likelihood
 
     # prepare for optimization by computing mean effect
     mu.estimate <- if (control$mean.est == "GLS") {
@@ -166,45 +156,144 @@ MLE_computation <- function(y, X, locs, W,
       coef(lm(y~X-1))
     }
 
-    # start optimization
-    optim.output <- stats::optim(par     = init[1:(2*pW + 1)],
-                                 fn      = profile.n2LL,
-                                 # arguments of profile.2nLL
-                                    cov_func = cov.func,
-                                    outer.W  = outer.W,
-                                    y        = y,
-                                    X        = X,
-                                    W        = W,
-                                    mean.est = mu.estimate,
-                                    taper    = taper,
-                                    envir    = path.env,
-                                    pc.dens  = pcp.neg2dens,
-                                 method  = "L-BFGS-B",
-                                 lower   = lower[1:(2*pW + 1)],
-                                 upper   = upper[1:(2*pW + 1)],
-                                 control = optim.control)
-  } else {
+    # start optimization...
+    if (is.null(control$parallel)) {
+      # ... without parallelization
+      optim.output <- stats::optim(
+        par     = init[1:(2*pW + 1)],
+        fn      = profile.n2LL,
+        # arguments of profile.2nLL
+          cov_func = cov.func,
+          outer.W  = outer.W,
+          y        = y,
+          X        = X,
+          W        = W,
+          mean.est = mu.estimate,
+          taper    = taper,
+          pc.dens  = pcp.neg2dens,
+        method  = "L-BFGS-B",
+        lower   = lower[1:(2*pW + 1)],
+        upper   = upper[1:(2*pW + 1)],
+        hessian = control$hessian,
+        control = optim.control)
+    } else {
+      # ... with parallelization
+      parallel::clusterEvalQ(
+        cl = control$parallel$cl,
+        {
+          library(spam)
+          library(varycoef)
+        }
+      )
 
-    optim.output <- stats::optim(par     = init,
-                                 fn      = n2LL,
-                                 # arguments of n2LL
-                                    cov_func = cov.func,
-                                    outer.W  = outer.W,
-                                    y        = y,
-                                    X        = X,
-                                    W        = W,
-                                    taper    = taper,
-                                    envir    = path.env,
-                                    pc.dens  = pcp.neg2dens,
-                                 method  = "L-BFGS-B",
-                                 lower   = lower,
-                                 upper   = upper,
-                                 control = optim.control)
+      parallel::clusterExport(
+        cl = control$parallel$cl,
+        varlist = ls(),
+        envir = environment()
+      )
+
+      optim.output <- optimParallel::optimParallel(
+        par     = init[1:(2*pW + 1)],
+        fn      = profile.n2LL,
+        # arguments of profile.2nLL
+          cov_func = cov.func,
+          outer.W  = outer.W,
+          y        = y,
+          X        = X,
+          W        = W,
+          mean.est = mu.estimate,
+          taper    = taper,
+          pc.dens  = pcp.neg2dens,
+        lower   = lower[1:(2*pW + 1)],
+        upper   = upper[1:(2*pW + 1)],
+        hessian = control$hessian,
+        control = optim.control,
+        parallel = control$parallel
+      )
     }
+
+    # compute mu with GLS estimator, if profile Likelihood has been used
+    cov.par <- optim.output$par
+    # compute covariance matrices
+    Sigma <- spam::as.spam(
+      Sigma_y(cov.par, pW, cov.func, outer.W, taper = taper)
+    )
+    # calculate Cholesky-Decompisition
+    cholS <- spam::chol.spam(Sigma)
+    # inverse of Sigma
+    I.Sigma <- spam::solve.spam(Sigma, Rstruct = cholS)
+    # compute mu
+    B <- spam::crossprod.spam(X, I.Sigma)
+    mu <- solve(B %*% X) %*% B %*% y
+
+  } else {
+    # optimization over full Likelihood
+
+    # start optimization...
+    if (is.null(control$parallel)) {
+      # ... without parallelization
+      optim.output <- stats::optim(
+        par     = init,
+        fn      = n2LL,
+        # arguments of n2LL
+          cov_func = cov.func,
+          outer.W  = outer.W,
+          y        = y,
+          X        = X,
+          W        = W,
+          taper    = taper,
+          pc.dens  = pcp.neg2dens,
+        method  = "L-BFGS-B",
+        lower   = lower,
+        upper   = upper,
+        hessian = control$hessian,
+        control = optim.control
+      )
+    } else {
+      # ... with parallelization
+      parallel::clusterEvalQ(
+        cl = control$parallel$cl,
+        {
+          library(spam)
+          library(varycoef)
+        }
+      )
+
+      parallel::clusterExport(
+        cl = control$parallel$cl,
+        varlist = ls(),
+        envir = environment()
+      )
+
+      optim.output <- optimParallel::optimParallel(
+        par     = init,
+        fn      = n2LL,
+        # arguments of 2nLL
+          cov_func = cov.func,
+          outer.W  = outer.W,
+          y        = y,
+          X        = X,
+          W        = W,
+          taper    = taper,
+          pc.dens  = pcp.neg2dens,
+        lower   = lower,
+        upper   = upper,
+        hessian = control$hessian,
+        control = optim.control,
+        parallel = control$parallel
+      )
+    }
+
+    mu <- NULL
+  }
+
+
+
+
 
   # preparing output
   return(list(optim.output = optim.output,
-              path = path.env,
+              mu = mu,
               call.args = list(y = y,
                                X = X,
                                locs = locs,
@@ -232,23 +321,16 @@ fitted_computation <- function(SVC_obj, y, X, W, locs) {
 ## ---- help function to construct SVC_mle object ----
 create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 
+  pW <- ncol(W)
+  pX <- ncol(X)
+
   # extract covariance parameters and coefficients for methods
   if (control$profileLik) {
     # with profile LL has to get mu first
     cov.par <- ML_estimate$optim.output$par
-
-    if (control$mean.est == "GLS") {
-      id <- which.min(apply(ML_estimate$path$x, 2,
-                            function(x) sum(( x-cov.par)^2)))
-      mu <- ML_estimate$path$mu[, id]
-    } else {
-      mu <- ML_estimate$path$mu[, 1]
-    }
-
+    mu <- ML_estimate$mu
 
   } else {
-    pW <- ncol(W)
-    pX <- ncol(X)
 
     # without profile LL mu is already in optim pars.
     hyper.par <- ML_estimate$optim.output$par
@@ -276,8 +358,6 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 
 
   return(SVC_obj)
-
-
 }
 
 
@@ -287,17 +367,21 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #'
 #' @param cov.name    name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential and \code{"exp"} for spherical covariance functions are supported.
 #' @param tapering    if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.
-#' @param cl          cluster for parallelization. Currently not supported.
+#' @param parallel    list with arguments for parallelization, see documentation of \code{\link[optimParallel]{optimParallel}}
 #' @param init        numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects
 #' @param lower       lower bound for optim, default \code{NULL} sets the lower bounds to 1e-6 for covariance parameters and \code{-Inf} for mean parameters.
 #' @param upper       upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.
 #' @param save.fitted logical. If \code{TRUE}, calculates the fitted values and residuals after MLE and saves them.
 #' @param profileLik  logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.
-#' @param mean.est    if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estiamte.
-#' @param pc.prior    takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea Simpson and Fulgstad.
+#' @param mean.est    if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estimate.
+#' @param pc.prior    takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea by Fulgstad et al. (2018) \doi{10.1080/01621459.2017.1415907}.
+#' @param extract_fun logical. If \code{TRUE}, the function call of \code{\link{SVC_mle}} stops before the MLE and gives back the objective function of the MLE as well as all used arguments. If \code{FALSE}, regular MLE is conducted.
+#' @param hessian     logical, feault is \code{FALSE}. Gives back Hessian matrix, see \link[stats]{optim}.
 #' @param ...         further parameters yet to be implemented
 #'
-#' @return A list with which \code{\link{SVC_mle}} can be controlled
+#' @details The argument \code{extract_fun} is useful, when one wants to modify the objective function. Further, when trying to parallelize the optimization, it is useful to check whether a single evaluation of the objective function takes longer than 0.05 seconds, cf. Gerber and Furrer (2019) \doi{10.32614/RJ-2019-030}. Platform specific issues can be sorted out by the user by setting up their own optimization.
+#'
+#' @return A list with which \code{\link{SVC_mle}} can be controlled.
 #' @seealso \code{\link{SVC_mle}}
 #'
 #' @examples
@@ -316,23 +400,27 @@ SVC_mle_control <- function(...) UseMethod("SVC_mle_control")
 #' @export
 SVC_mle_control.default <- function(cov.name = c("exp", "sph"),
                                     tapering = NULL,
-                                    cl = NULL,
+                                    parallel = NULL,
                                     init = NULL,
                                     lower = NULL,
                                     upper = NULL,
                                     save.fitted = TRUE,
                                     profileLik = FALSE,
                                     mean.est = c("GLS", "OLS"),
-                                    pc.prior = NULL, ...) {
+                                    pc.prior = NULL,
+                                    extract_fun = FALSE, 
+                                    hessian = FALSE, ...) {
   stopifnot(is.null(tapering) |
               (tapering>=0) |
               is.logical(save.fitted) |
-              is.logical(profileLik))
+              is.logical(profileLik) |
+              is.logical(extract_fun) |
+              is.logical(hessian))
 
 
   list(cov.name = match.arg(cov.name),
        tapering = tapering,
-       cl = cl,
+       parallel = parallel,
        init = init,
        lower = lower,
        upper = upper,
@@ -340,6 +428,8 @@ SVC_mle_control.default <- function(cov.name = c("exp", "sph"),
        profileLik = profileLik,
        mean.est = match.arg(mean.est),
        pc.prior = pc.prior,
+       extract_fun = extract_fun,
+       hessian = hessian,
        ...)
 }
 
@@ -386,7 +476,7 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #' @param optim.control  list of control arguments for optimization function, see Details in \code{\link{optim}}
 #' @param ...            further arguments
 #'
-#' @return Object of class \code{SVC_mle}
+#' @return Object of class \code{SVC_mle} if \code{control$extract_fun} is \code{FALSE}, meaning that a MLE has been conducted. Otherwise, if \code{control$extract_fun} is \code{TRUE}, the function return a list with the objective function being used in the optimization (named \code{obj_fun}) and the arguments to call it (named \code{args}). For further detials, see description of \code{\link{SVC_mle_control}}.
 #'
 #' @author Jakob Dambon
 #'
@@ -430,9 +520,23 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #' fit <- SVC_mle(y = y, X = X, locs = locs,
 #'                control = control,
 #'                optim.control = opt.control)
+#' class(fit)
 #'
 #' ## output: convergence code equal to 1, since maxit was only 1
 #' summary(fit)
+#'
+#' ## extract the optimization arguments, including objective function
+#' control$extract_fun <- TRUE
+#' opt <- SVC_mle(y = y, X = X, locs = locs,
+#'                control = control)
+#'
+#' # objective function and its arguments of optimization
+#' class(opt$obj_fun)
+#' class(opt$args)
+#'
+#' # single evaluation with initial value
+#' do.call(opt$obj_fun,
+#'         c(list(x = control$init), opt$args))
 #'
 #' \donttest{
 #' ## ---- real data example ----
@@ -477,6 +581,7 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #' }
 #' @import spam
 #' @importFrom stats dist optim
+#' @importFrom optimParallel optimParallel
 #' @export
 SVC_mle <- function(...) UseMethod("SVC_mle")
 
@@ -505,10 +610,17 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
                                  control = control,
                                  optim.control = optim.control)
 
-  object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
+  if (is.function(ML_estimate$obj_fun)) {
+    # extract objective function
+    return(ML_estimate)
+  } else {
+    # after optimization
+    object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
 
-  class(object) <- "SVC_mle"
-  return(object)
+    class(object) <- "SVC_mle"
+    return(object)
+  }
+
 }
 
 # formula call

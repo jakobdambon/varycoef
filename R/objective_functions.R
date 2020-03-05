@@ -1,7 +1,7 @@
 # holds objective functions to be optimized, i.e. negative log-likelihood of SVC-Models
 
 profile.n2LL <- function(x, cov_func, outer.W, y, X, W, mean.est,
-                         taper = NULL, envir = NULL, pc.dens = NULL) {
+                         taper = NULL, pc.dens = NULL) {
 
   pW <- ncol(W)
   pX <- ncol(X)
@@ -30,16 +30,10 @@ profile.n2LL <- function(x, cov_func, outer.W, y, X, W, mean.est,
     mu <- mean.est
   }
 
-
-  # save past computations of mu
-  if (!is.null(envir)) {
-    envir$mu <- cbind(envir$mu, mu)
-    envir$x  <- cbind(envir$x, matrix(x, ncol = 1))
-  }
-
   res <- y - X %*% mu
 
-
+  # n2LL as stated in paper Dambon et al. (2020) does not contain the
+  # summand n*log(2 * pi), but it is needed to compute the actual LL
   return(n * log(2 * pi) +
            2 * c(spam::determinant.spam.chol.NgPeyton(cholS)$modulus) +
            as.numeric(crossprod(res, I.Sigma %*% res)) +
@@ -49,7 +43,7 @@ profile.n2LL <- function(x, cov_func, outer.W, y, X, W, mean.est,
 
 
 n2LL <- function(x, cov_func, outer.W, y, X, W,
-                 taper = NULL, envir = NULL, pc.dens = NULL) {
+                 taper = NULL, pc.dens = NULL) {
 
 
   pW <- ncol(W)
@@ -68,21 +62,15 @@ n2LL <- function(x, cov_func, outer.W, y, X, W,
 
   res <- y - X %*% mu
 
-  # save all x, mu
-  if (!is.null(envir)) {
-    envir$x  <- cbind(envir$x, matrix(x[1:(2*pW+1)], ncol = 1))
-    envir$mu <- cbind(envir$mu, mu)
-  }
 
-
+  # n2LL as stated in paper Dambon et al. (2020) does not contain the
+  # summand n*log(2 * pi), but it is needed to compute the actual LL
   return(n * log(2 * pi) +
            2 * c(spam::determinant.spam.chol.NgPeyton(cholS)$modulus) +
            as.numeric(crossprod(spam::forwardsolve(cholS, res,
                                                    transpose = TRUE,
                                                    upper.tri = TRUE)))+
            pc_penalty(x, pW, pc.dens))
-
-
 }
 
 

@@ -4,8 +4,7 @@
 \alias{print.summary.SVC_mle}
 \title{Printing Method for \code{summary.SVC_mle}}
 \usage{
-\method{print}{summary.SVC_mle}(x, digits = max(3L, getOption("digits") -
-  3L), ...)
+\method{print}{summary.SVC_mle}(x, digits = max(3L, getOption("digits") - 3L), ...)
 }
 \arguments{
 \item{x}{\code{\link{summary.SVC_mle}}}

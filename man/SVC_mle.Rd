@@ -8,11 +8,17 @@
 \usage{
 SVC_mle(...)
 
-\method{SVC_mle}{default}(y, X, locs, W = NULL, control = NULL,
-  optim.control = list(), ...)
+\method{SVC_mle}{default}(y, X, locs, W = NULL, control = NULL, optim.control = list(), ...)
 
-\method{SVC_mle}{formula}(formula, data, RE_formula = NULL, locs,
-  control, optim.control = list(), ...)
+\method{SVC_mle}{formula}(
+  formula,
+  data,
+  RE_formula = NULL,
+  locs,
+  control,
+  optim.control = list(),
+  ...
+)
 }
 \arguments{
 \item{...}{further arguments}
@@ -36,7 +42,7 @@ SVC_mle(...)
 \item{RE_formula}{Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
 }
 \value{
-Object of class \code{SVC_mle}
+Object of class \code{SVC_mle} if \code{control$extract_fun} is \code{FALSE}, meaning that a MLE has been conducted. Otherwise, if \code{control$extract_fun} is \code{TRUE}, the function return a list with the objective function being used in the optimization (named \code{obj_fun}) and the arguments to call it (named \code{args}). For further detials, see description of \code{\link{SVC_mle_control}}.
 }
 \description{
 Calls MLE of the SVC model defined as:
@@ -93,9 +99,23 @@ opt.control <- list(
 fit <- SVC_mle(y = y, X = X, locs = locs,
                control = control,
                optim.control = opt.control)
+class(fit)
 
 ## output: convergence code equal to 1, since maxit was only 1
 summary(fit)
+
+## extract the optimization arguments, including objective function
+control$extract_fun <- TRUE
+opt <- SVC_mle(y = y, X = X, locs = locs,
+               control = control)
+
+# objective function and its arguments of optimization
+class(opt$obj_fun)
+class(opt$args)
+
+# single evaluation with initial value
+do.call(opt$obj_fun,
+        c(list(x = control$init), opt$args))
 
 \donttest{
 ## ---- real data example ----

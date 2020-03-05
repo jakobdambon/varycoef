@@ -1,11 +1,10 @@
 ---
-title: "Manual"
+title: "varycoef: An R Package to Model Spatially Varying Coefficients"
 author: "Jakob A. Dambon"
-date: "`r Sys.Date()`"
+date: "October 2019"
 output: 
   rmarkdown::html_vignette:
     toc: true
-bibliography: bibliography.bib
 vignette: >
   %\VignetteIndexEntry{First Example}
   %\VignetteEngine{knitr::rmarkdown}
@@ -13,68 +12,70 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(varycoef)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, 
+                      fig.width=7, fig.height=4)
 ```
+
 
 ## Introduction
 
-The package `varycoef` contains methods to model and estimate varying coefficients. In its current version `r packageVersion("varycoef")` it supports:
+With the release of the R package `varycoef` on CRAN ([see](https://CRAN.R-project.org/package=varycoef)) we enable you to analyze your spatial data and in a simple, yet versatile way. The underlying idea are *spatially varying coefficients*, short SVC, which have been studied over the last decades. These models are based on the linear regression model and are therefore very easy to interpret. Due to their design, SVC models offer a high flexibility. These two properties allow for better understanding of the data, gaining new insights and, ultimately, better predictive performance. 
 
-- only *spatially* varying coefficient (SVC)
+In this blog post, we will show what SVC models are and how to define them. Afterwards, we give a short and illustrative example on how to apply these tools in `varycoef` using the well known data set `meuse` from the package `sp`. 
 
-- different MLE approaches to model SVC and to give predictions. 
-
-
-### Spatially Varying Coefficient Models
-
-We define a *full SVC model* as
+**Disclaimer**
+This analysis is meant to be a show case of what is possible using the package `varycoef`, not to write the most rigorous statistical analysis of a data set.
 
 
-$$y(s) = x^{(1)}(s)\beta_1(s) + ... + x^{(p)}(s)\beta_p(s) + \epsilon(s)$$
+But first, let us start with the set up and let me show you where to find help: 
 
-with the coefficients represented by Gaussian random fields (GRF) $\beta_j(\cdot) \sim \mathcal N (\mu_j \textbf 1_n, C_j(\cdot, \cdot))$. That is, every coefficient $j = 1, ..., p$ is distinctly defined by a mean $\mu_j$ and a covariance matrix defined by an underlying covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$, where $\sigma_j^2$ is the variance and $\rho_j$ is the scale of the GRF. Further, $\epsilon$ is a nugget effect with variance $\tau^2$. 
+```{r install}
+# install from CRAN
+# install.packages("varycoef")
 
-However, there are some cases, where the assumption of a full SVC model is not applicable. We want to give options for covariates w.r.t.:
+# attach package
+library(varycoef)
 
+# general package help file (check out examples with manual vignette!!)
+help("varycoef")
+```
 
-1. *mixed SVC*, i.e. as above with its respective mean (fixed effect) and random effect described by its GRF.
-2. *fixed effect*, i.e. without an GRF modelling its spatial structure.
-3. *mean-zero SVC*, i.e. only a zero-mean random effect modelling the spatial structure. 
+There is also a version of `varycoef` on [Github](https://github.com/jakobdambon/varycoef) from which you can get the latest devel version. 
 
-That is why we generalize the model above. First, note that we can write it in matrix form as
+### Preliminaries
+Before we start, we want to give some prerequisites in order to understand the analysis below. Beside a classical linear regression model, we require the knowledge of geostatistics and tools thereof, like:
 
-$$\textbf y(\textbf s) = \textbf X  \beta(\textbf s) + \epsilon( \textbf s)$$
-
-where $\textbf X$ is our model matrix. Then we can write down the model divided into an fixed effect part and a random effect part:
-
-
-$$\textbf y(\textbf s) = \textbf X  \mu + \textbf W  \eta(\textbf s) + \epsilon( \textbf s)$$
-
-where $\eta$ is the joint mean-zero GRF. Note that both model are the same if $\textbf X  = \textbf W$. Thus, we can specify options 1 to 3 from above by in- or excluding columns of $\textbf X$ or $\textbf W$, respectively.
+- what is the advantage of geostatistics?
+- two-dimensional Gaussian processes, i.e. Gaussian random fields
+- covariance functions and how the range and variance parameter influence them
+- maximum likelihood estimation
 
 
 
-### Example
 
+### What are Spatially Varying Coefficient Models?
 
-To give a simple example, we start by sampling artificial data. So define an *full SVC model* as given above and sample from a regular grid using a help function:
+SVC models are a generalization of the classical linear regression model. In matrix notation with a response vector $\mathbf y$, a data matrix $\mathbf X$, and a vector $\boldsymbol \varepsilon$ containing the errors, a linear regression model is defined as
 
+$$\mathbf y = \mathbf X \boldsymbol \beta + \boldsymbol \varepsilon.$$
 
-```{r define and sample SVC, warning=FALSE, fig.width=7, fig.height=7, message=FALSE}
+In geostatistics, the error term usually is called the nugget. SVC models are introduced through a random effect $\boldsymbol \eta(s)$ that is depending on the location $s$. The underlying model takes the form 
+
+$$\mathbf y = \mathbf X \boldsymbol \beta + \mathbf W \boldsymbol \eta (s) + \boldsymbol  \varepsilon$$
+ where $\mathbf W$ parses the covariates to the random effect $\boldsymbol \eta(s)$. Specifically, each SVC is defined by a Gaussian process, more specifically a  Gaussian random field (GRF), with mean zero and some stationary covariance function. This function usually depends on some marginal variance (sill) and a range. An example of 3 SVC, i.e. 3 GRFs, and the nugget $\boldsymbol \varepsilon$ on a regular grid is given in the figure below.
+ 
+ 
+```{r SVC example}
+# setting seed
+set.seed(123)
 # number of SVC
 p <- 3
-
-(pars <- data.frame(mu = rep(0, p), 
-                    var = c(0.1, 0.2, 0.3), 
-                    scale = c(0.3, 0.1, 0.2)))
-nugget.var <- 0.05
-
 # sqrt of total number of observations
 m <- 20
-
-
-
+# covariance parameters
+(pars <- data.frame(var = c(0.1, 0.2, 0.3), 
+                    scale = c(0.3, 0.1, 0.2)))
+nugget.var <- 0.05
 
 # function to sample SVCs
 sp.SVC <- fullSVC_reggrid(m = m, p = p, 
@@ -82,425 +83,306 @@ sp.SVC <- fullSVC_reggrid(m = m, p = p,
                           nugget = nugget.var)
 
 library(sp)
-# visualization
+# visualization of sampled SVC
 spplot(sp.SVC, colorkey = TRUE)
 ```
 
+Just by looking at the figure, one can see that
 
+1. SVC_1, SVC_2 and SVC_3 have some spatial clustering...
+2. ..., whereas the nugget does not.
+3. The largest variance can be observed in SVC_2 and SVC_3.
+4. The largest spatial clusters are in SVC_1.
+5. They all vary around 0, which is expected as they are all zero mean GRF.
 
-We further need some covariates which we sample from a standard normal. In order to model an intercept, we set $x^{(1)} = 1$:
+### Goal of SVC Modelling
 
-```{r sample covariates}
-# total number of observation
-n <- m^2
+Given the response $\mathbf y$, the data matrices $\mathbf X$ and $\mathbf W$, we want to estimate the coefficients $\boldsymbol \beta$ as we would with a linear regression model, and further, try to understand the properties of $\boldsymbol \eta(s)$. Another important aspect is that we are able to predict $\boldsymbol \eta(s')$ for some new locations $s'$. This is what we are about to do in the following sections. 
 
-X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
-head(X)
+## Meuse Data Set Example
+
+### The Data Set
+
+As mentioned, the data set `meuse` from the package `sp` is quite well known. 
+
+```{r meuse intro}
+# attach sp and load data
+library(sp)
+data("meuse")
+
+# documentation
+help("meuse")
+
+# overview
+summary(meuse)
+dim(meuse)
 ```
 
-We compute the response $y$:
-
-```{r compute response}
-y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
-```
-
-
-## MLE in `varycoef`
-
-
-The main function of this package is `SVC_mle`. Its function call starts the MLE but it requires some preparation and settings of control parameters. We go through each argument of the `SVC_mle` function and its control parameter `SVC_mle.control`. 
-
-### The Function `SVC_mle`
-
-As one might see in the help file of the `SVC_mle` function, it has 3 mandatory arguments: `y`, the response; `X`, the data matrix and `locs`, the locations. If we do not change `W`, i.e. `W = NULL`, then we use `W = X` and are in the case of a full SVC. We will give examples for different kinds of models. 
-
-### Control Parameters
-
-As for the control parameters for `SVC_mle`, we go through them as they are implemented in the current version of `varycoef`. By calling `SVC_mle_control`, we create an list with all needed arguments to start a simple `SVC_mle`. 
-
-
-```{r contorl parameters}
-control <- SVC_mle_control()
-str(control)
-```
-
-#### Covariance Function
-
-Here we define the covariance function $C_j(s_k, s_l) = \sigma_j^2 \phi_{\rho_j}(s_k, s_l)$. In its current version `r packageVersion("varycoef")`, `varycoef` supports only exponential covariance functions, i.e. $\phi_{\rho}(s_k, s_l) = \exp\left(\frac{\|s_k - s_l\|}{\rho}\right)$.
-
-
-#### Tapering
-
-Covariance tapering goes back to [@Furrer2006] and is a technique to challenge the "big $n$ problem" when dealing with spatial data. When working with $n$ observations, the covariance matrix has dimension $n \times n$. The likelihood function of a single GRF or, in particular, the SVC models as described above, includes the inverse as well as the determinant of a covariance matrix. The computation of both is based on the Cholesky decomposition which has run-time $\mathcal O(n^3)$. There are several ways on how to deal with this computational burden. 
-
-With *covariance tapering*, we introduce a sparsity structure on the covariance matrix. This sparsity structure can then be used to our advantage with the Cholesky decomposition implemented in the package `spam`, [@Rspam]. In a nutshell, this decomposition becomes faster as the sparsity increases. However, this comes with a trade-off in the precision of the MLE of the covariance parameters with finitely many observation. Asymptotically, the procedure is consistent. 
-
-
-By default, the `tapering` entry is `NULL`, i.e. no tapering is applied. If a scalar is provided, then this is taper range is applies. In other words, every spatial dependency is cut for distances larger than `tapering`. We illustrate the difference between both the untapered and tapered covariance matrix of the SVC on the regular grid example from above. The function `fullSVC_reggrid` is used to sample SVCs for a full SVC model. 
-
-
-```{r illustrate tapering, echo = FALSE, fig.width=7, fig.height=7}
-
-r <- c(0.5, 0.3, 0.1)
-out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
-  
-  
-  locs <- coordinates(sp.SVC)
-  if (is.null(taper.range)) {
-    d <- as.matrix(dist(locs))
-  } else {
-    d <- spam::nearest.dist(locs, delta = taper.range)
-  }
-  
-  
-  # get covariance function
-  raw.cov.func <- varycoef:::MLE.cov.func("exp")
-  
-  # covariance function
-  cov.func <- function(x) raw.cov.func(d, x)
-    
-  
-  W <- X
-  
-  outer.W <- lapply(1:p, function(j) W[, j]%o%W[, j])
-  
-  
-  # tapering?
-  taper <- if(is.null(taper.range)) {
-    # without tapering
-    NULL
-  } else {
-    # with tapering
-    spam::cov.wend1(d, c(taper.range, 1, 0))
-  }
-  
-  x <- c(rep(1, 2*p+1), rep(0, p))
-  
-  S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W, taper)
-  
-  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, taper = taper)
-  
-  list(d, taper, S_y, nll)
-})
-
-
-
-
-oldpar <- par(mfrow = c(2, 2))
-
-
-image(out[[1]][[3]])
-title(main = "No tapering applied")
-image(out[[2]][[3]])
-title(main = paste0("Taper range = ", r[1]))
-image(out[[3]][[3]])
-title(main = paste0("Taper range = ", r[2]))
-image(out[[4]][[3]])
-title(main = paste0("Taper range = ", r[3]))
-
-
-par(oldpar)
-
-```
-
-
-Finally, we show the time differences of evaluating the likelihood function between the different taper ranges. We use the `microbenchmark` package:   
-
-```{r runtime tapering, fig.width=7, echo = TRUE, fig.height=5, warning=FALSE}
-
-
-library(microbenchmark)
-
-(mb <- microbenchmark(no_tapering  = out[[1]][[4]](),
-                      tapering_0.5 = out[[2]][[4]](), 
-                      tapering_0.3 = out[[3]][[4]](),
-                      tapering_0.1 = out[[4]][[4]]())
-)
-
-boxplot(mb, unit = "ms", log = TRUE, xlab = "tapering", ylab = "time (milliseconds)")
-```
-
-
-
-#### Parallelization of Optimization
-
-To be implemented.
-
-
-#### Initial Values
-
-To run an MLE, we need initial values for all variances and the scales as well as the means. A good starting point for the means are the estimated coefficients of an OLS, i.e.:
-
-```{r mean initials}
-(mu.init <- coef(lm(y~.-1, data = data.frame(y = y, X = X))))
-```
-
-
-For the variance, we take the estimated variance of the OLS method, i.e 
-
-```{r variance initials}
-(var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
-```
-
-For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot model. Therefore we suggest to take an initial scale of 
-
-
-```{r scale initials}
-scale.init <- 0.2
-```
-
-
-The vector of initial values is then:
-
-
-```{r joint initials}
-init <- c(
-  # GRFs scales and variances
-  rep(c(scale.init, var.init), p),
-  # nugget variance
-  var.init,
-   # means
-  mu.init)
-```
-
-
-One can either overwrite the default initial value (`control$init`) or call `SVC_mle_control` with corresponding arguments:
-
-```{r overwrite initials}
-# default
-control$init
-
-# overwrite
-control$init <- init
-
-# create new
-control <- SVC_mle_control(init = init)
-```
-
-**The default values gives initial values of $0.3$ for the variances and ranges and $0$ for the means, which might not be the best option in general.**
-
-
-#### Lower and Upper Bounds
-
-The optimization function `optim` allows with its chosen method `"L-BFGS-B"` the usage of lower and upper bounds. The lower and upper bounds for each parameter can be given in correspondence to the order in the initial values.
-
-
-#### Save Fitted Values
-
-The argument `save.fitted` takes logical values and decides whether the fitted values of the SVC model after the MLE should be computed. This takes some extra time, but can be useful since an extraction of those fitted values as well as the residuals is possible using a methods `fitted` or `residuals`. **In case of allocation errors, set to `FALSE`**. 
-
-```{r overwrite save.fitted}
-# default
-control$save.fitted
-
-# overwrite
-control$save.fitted <- TRUE
-```
-
-#### Profile Likelihood
-
-In some SVC models, it might be an advantage to optimize not over all parameters, i.e. the mean and the covariance parameters. The motivation here is a dimension reduction of the parameter space. Setting `profileLik` to `TRUE`, the optimization will be done using the profile likelihood of the covariance parameters. The mean effects are then implicitly calculated using the *generalized least squares estimate*. 
-
-```{r show profileLik}
-# default
-control$profileLik
-```
-
-**Attention:** Since the number of parameters is reduced, one should also be aware that the initial values as well as the lower and upper bounds are given correctly. 
-
-
-#### Regularizing Priors
-
-We implemented a usage of penalizing complexity priors. The argument `pc.prior` takes a vector of length 4 as an input where the values are $\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma$ to compute penalized complexity priors. One wants to penalize the lower tail on the range parameter as well as the upper tail of the standard deviation:
-
-$$P(\rho < \rho_0) = \alpha_\rho, \quad P(\sigma > \sigma_0) = \alpha_\sigma.$$
-
-### Example: MLE of full SVC
-
-We can now start the MLE. The following function call takes a few second.
-
-
-```{r SVC MLE}
-fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
-```
-
-The received object `fit` is of class `r class(fit)`. For this class, there are numerous methods such as:
-
-```{r SVC_mle methods, fig.width=7, fig.height=7}
-# estimated ...
-# ... covariance parameters
-cov_par(fit)
- # ... mean effects
-coef(fit)
-
-# summary
-summary(fit)
-
-# residual plots
-oldpar <- par(mfrow = c(1, 2))
-plot(fit, which = 1:2)
-
+What we are interested in are the `cadmium` measurements. On the plots below, the data is skewed, which is why we are going to work on the natural logarithm of `cadmium`.
+
+```{r hist plot}
+par(mfrow = 1:2)
+# histogram of (log) cadmium 
+hist(meuse$cadmium); hist(log(meuse$cadmium))
 par(mfrow = c(1, 1))
-plot(fit, which = 3)
 
+meuse$l_cad <- log(meuse$cadmium)
+```
+
+Adding the coordinate reference system (CRS, see `help(meuse)`) and the sampling locations, one can obtain a spatial plot of the log cadmium measurements.
+
+```{r spatial plot}
+# construct spatial object
+sp.meuse <- meuse
+coordinates(sp.meuse) <- ~x+y
+proj4string(sp.meuse) <- CRS("+init=epsg:28992")
+
+# using package tmap
+library(tmap)
+# producing an interactive map
+tmap_leaflet(tm_shape(sp.meuse) + tm_dots("l_cad", style = "cont"))
+```
+
+Generally, the values for `l_cad` are highest close to the river Meuse. However, there is some spatial clustering comparing the center of all observations to the Northern part. We will now try model the `l_cad` based on some of the covariates given in the data set `meuse`. 
+
+### The Covariates
+
+As independent variables, we choose the following:
+
+- `dist`, i.e. the normalized distance to the river Meuse. 
+- `lime`, which is a 2-level factor indicating the presence of lime. 
+- `elev`, i.e. the relative elevation above the local river bed.
+
+I am not a geologist, but these covariates seem like a sensible choice, if I try to predict cadmium at a given location without taking further measurements of cadmium or other highly correlated heavy metals like copper, lead, or zinc. 
+
+## First Models
+
+Given the covariates, we continue to fit the data with different models and corresponding methods. Hence, we work our way up starting with a linear regression and geostatistical model.
+
+
+### Linear Regression Model
+
+We start with a linear regression model (LM) and ordinary least squares (OLS).
+
+```{r linear regression}
+# linear model (LM)
+lm.fit <- lm(l_cad ~ 1+dist+lime+elev, data = meuse)
+summary(lm.fit)
+```
+
+The residual analysis shows:
+
+```{r LM residuals}
+oldpar <- par(mfrow = c(1, 2))
+plot(lm.fit, which = 1:2)
 par(oldpar)
 ```
 
+The spatial distribution of the residuals is the following:
 
-
-Now, we can use our `fit` object to make predictions:
-
-
-```{r make predictions}
-# calling predictions without specifying new locations (newlocs) or 
-# new covariates (newX) gives estimates of SVC only at the training locations.
-pred.SVC <- predict(fit)
+```{r LM spatial residuals}
+# add LM residuals to data frame
+sp.meuse$LM_res <- resid(lm.fit)
+head(sp.meuse)
+# plot residuals at corresponding locations
+tmap_leaflet(tm_shape(sp.meuse) + tm_dots("LM_res", style = "cont"))
 ```
 
 
-Since we know the true SVC, we can compute the error in prediction and compare it to the true values.
+One can observe that there is a spatial clustering of the residuals. This motivates us to use geostatistics. 
 
-```{r visualization of prediction, fig.width=7, fig.height=7}
-colnames(pred.SVC)[1:p] <- paste0("pred.",colnames(pred.SVC)[1:p])
-coordinates(pred.SVC) <- ~loc_x+loc_y
-all.SVC <- cbind(pred.SVC, sp.SVC[, 1:3])
 
-# compute errors
-all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
-all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
-all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
+### Geostatistical Model
 
-colnames(all.SVC@data) <- paste0(rep(c("pred.", "true.", "err."), each = p), "SVC_", rep(1:p, 3))
+The classical geostatistical model is a good reference and starting point for SVC models. Geostatistical models using a GRF are a special case of SVC models. More specifically, we want to model a single random effect and the data matrix $\mathbf W$ only contains the intercept, such that the SVC model simplifies to the known geostatistical model 
 
-spplot(all.SVC[, paste0(rep(c("true.", "err.", "pred."), each = p), 
-                        "SVC_", 1:p)], colorkey = TRUE)
+$$\mathbf y = \mathbf X \boldsymbol \beta +  \boldsymbol \eta (s) + \boldsymbol  \varepsilon.$$
+
+Usually, we start by computing the empirical (semi-) variogramm and estimating a suitable model. Trying the exponential covariance function, we get the following:
+
+```{r geostatistical}
+library(gstat)
+# empirical variogram
+eV <- variogram(LM_res ~ 1, sp.meuse)
+# define variogram model with initial values
+mV <- vgm(0.2, "Exp", 300, 0.4)
+# fit model 
+(fV <- fit.variogram( eV, mV))
+# plot empirical and fitted
+plot(eV, model=fV)
 ```
 
 
+The fit looks reasonable and the estimated values are (literally) good starting points for our methodology coming up in the next section. So we can do ordinary kriging on the residuals.
 
-In this small example we already can see that the predicted SVC takes the general spatial structure of the true SVC. The error does not appear to have spatial structure for the SVC 2 and 3, respectively. However, the error for the intercept seems to have some spatial structure. If we increase the number of observations, the picture changes:
-
-
-```{r n2500 figure, fig.width=7, fig.height=7, echo = TRUE}
-knitr::include_graphics("figures/SVCs_result_n2500_p3.png")
+```{r ordinary kriging}
+# study area
+data("meuse.grid")
+coordinates(meuse.grid) <- ~x+y
+proj4string(meuse.grid) <- proj4string(sp.meuse)
+# kriging
+GS.fit <- krige(LM_res ~ 1, sp.meuse, 
+                newdata = meuse.grid, model = fV)
+# output
+tmap_leaflet(tm_shape(GS.fit) + tm_dots("var1.pred", style = "cont"))
 ```
 
-
-We do not run the code since it takes a couple hours to do the MLE, but here is the code to reproduce the figure:
-
-```{r n2500 example, eval=FALSE}
-# new m
-m <- 50
-
-# new SVC model
-sp.SVC <- fullSVC_reggrid(m = m, p = p, 
-                          cov_pars = pars,
-                          nugget = nugget.var)
-
-spplot(sp.SVC, colorkey = TRUE)
-
-# total number of observations
-n <- m^2
-X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
-y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
+This seems to fit the residuals pretty good.
 
 
-fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC))
+## The SVC Model
 
+Now we want to see how the SVC model performs. We will use the same covariates. However, as for the locations, we will transform the Easting and Northing given in meters to kilometers. This is due to computational stability.
 
-
-sp2500 <- predict(fit)
-
-
-colnames(sp2500)[1:p] <- paste0("pred.",colnames(sp2500)[1:p])
-coordinates(sp2500) <- ~loc_x+loc_y
-all.SVC <- cbind(sp2500, sp.SVC[, 1:3])
-
-# compute errors
-all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
-all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
-all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
-
-colnames(all.SVC@data) <- paste0(rep(c("pred.", "true.", "err."), each = p), "SVC_", rep(1:p, 3))
-
-png(filename = "figures/SVCs_result_n2500_p3.png", width = 960, height = 960)
-spplot(all.SVC[, paste0(rep(c("true.", "err.", "pred."), each = p), 
-                        "SVC_", 1:p)], colorkey = TRUE, 
-       as.table = TRUE, layout = c(3, 3))
-dev.off()
+```{r varycoef preparation}
+# response variable
+y <- meuse$l_cad
+# covariates for fixed effects
+X <- model.matrix(~1+dist+lime+elev, data = meuse)
+# locations
+locs <- as.matrix(meuse[, 1:2])/1000
 ```
 
+Our SVC model describes the data as follows: The fixed effects are the same as in the LM. For the random effects, we consider an intercept (as a geostatistical model would) as well as SVCs for the covariates `dist` and `lime`. The reason is to show that our methodology also applies to SVC models where we assume that some coefficients are spatially constant, i.e. we do not associate an SVC. In our case, this is the case for the covariate `elev`.
 
-### Example: MLE of non full SVC models
+```{r varycoef random effect}
+# covariates for SVC (random effects)
+W <- model.matrix(~1+dist+lime, data = meuse)
+```
 
-In some cases, the assumption of a full SVC model might be wrong. Therefore, one might want to restrict the covariables to vary in some, but not all cases. In this case $\textbf X \neq \textbf W$, hence we need to specify the `W` argument of `SVC_mle` independently of `X`. We now have to differentiate between `X` and `W`, which is why we introduce `pX` and `pW` as the number of covariates for `X` and `W`, respectively. 
+The methodology we use is maximum likelihood estimation (MLE). It is implemented as a numerical optimization of the likelihood function. More specifically, we optimize over the covariance parameters associated to the SVC as well as the error variance. The optimization is therefore performed on the profile likelihood. 
+As the MLE is a numerical optimization, we need starting values. Here, the parameters estimated in the geostatistical model come in handy and we will use them across all SVC.
 
-
-```{r sample SVC model}
-# new m
-m <- 20
-
-# number of fixed effects
-pX <- 4
-# number of mean-zero SVC
-pW <- 3
-
-
-# mean values
-mu <- 1:pX
-
-# new SVC model
-sp.SVC <- fullSVC_reggrid(m = m, p = pW, 
-                          cov_pars = pars,
-                          nugget = nugget.var,
-                          seed = 4)
-
-# total number of observations
-n <- m^2
-X <- matrix(c(rep(1, n), rnorm((pX-1)*n, 
-                               mean = rep(1:(pX-1), each = n), 
-                               sd = rep(0.2*(1:(pX-1)), each = n))), ncol = pX)
-W <- X[, 1:pW]
-# calculate y 
-y <- 
-  # X * mu
-  X %*% mu +
-  # W * beta_tilde
-  apply(W * as.matrix(sp.SVC@data[, 1:pW]), 1, sum) + 
+```{r varycoef control}
+# construct initial value (recall transformation from meters to kilometers)
+(init <- c(
+  # 3 times for 3 SVC
+  rep(c(
+    # range
+    fV$range[2]/1000,
+    # variance
+    fV$psill[2]),     
+  3), 
   # nugget
-  sp.SVC@data[, pW+1]
+  fV$psill[1]
+))
+# control settings vor MLE
+control <- SVC_mle_control(
+  # profile likelihood optimization
+  profileLik = TRUE,
+  # initial values
+  init = init
+)
+```
 
-# new initial values
-control <- SVC_mle_control(init = c(init[1:(2*pW + 1)], mu))
+Now, we can start the MLE:
 
+```{r varycoef fit}
 # MLE
-fit <- SVC_mle(y = y, X = X, W = W, locs = coordinates(sp.SVC), control = control)
+VC.fit <- SVC_mle(y = y, X = X, W = W, locs = locs,
+                  control = control)
+# outcome
+summary(VC.fit)
 
+# residuals
+oldpar <- par(mfrow = c(1, 2))
+plot(VC.fit, which = 1:2)
+par(mfrow = c(1, 1))
+plot(VC.fit, which = 3)
+par(oldpar)
 ```
 
-As above, one can then use the `SVC_mle`-class object to get predictions using a method of the `predict` function. Depending on the available information, there are 2 types of preditions one can receive. First, just specifying the new locations using `newlocs` will result in predictions for each individual SVC at corresponding locations. Additionally, when providing the corresponding data matrices `newX` **and** `newW` one gets the estiamted response variable `y`. Further, setting the argument `compute.y.var` to `TRUE` will give the predictive variances to the predictions of `y`.
+If we want to make some kind of predictions, we will have to transform the locations, as we did with the initial `meuse` data. 
 
+```{r varycoef predict locations}
+newlocs <- coordinates(meuse.grid)/1000
+# prediciton
+VC.pred <- predict(VC.fit, newlocs = newlocs)
+# outcome
+head(VC.pred)
+# transformation to a spatial points data frame
+colnames(VC.pred)[1:3] <- c("Intercept", "dist", "lime")
+sp.VC.pred <- VC.pred
+coordinates(sp.VC.pred) <- coordinates(meuse.grid)
+proj4string(sp.VC.pred) <- proj4string(sp.meuse)
 
+# points of interest (POI), we come back to them later
+POI1.id <- 235
+POI2.id <- 2016
+POI1 <- meuse.grid[POI1.id, ]
+POI2 <- meuse.grid[POI2.id, ]
 
-```{r give predictions}
-set.seed(5)
-newlocs <- matrix(c(0, 0), ncol = 2)
-
-
-# only SVC prediction without y prediction
-(pred.SVC <- predict(fit, newlocs = newlocs))
-
-
-
-# SVC prediction and y prediction (with predictive variance)
-newX <- matrix(c(1, rnorm(pX-1)), ncol = pX)
-newW <- matrix(newX[, 1:pW], ncol = pW)
-
-(pred.SVC <- predict(fit, 
-                     newlocs = newlocs, 
-                     newX = newX, newW = newW, 
-                     compute.y.var = TRUE))
+tm_POIs <- 
+  tm_shape(POI1) +
+  # square (pch = 15)
+  tm_symbols(shape = 15, col = "black") +
+  tm_shape(POI2) +
+  # triangle (pch = 17)
+  tm_symbols(shape = 17, col = "black")
 ```
 
-## References
+
+```{r,fig.height=6}
+# tm.GS: GS fit
+tm.GS <- tm_shape(GS.fit) + tm_dots("var1.pred", style = "cont")
+
+# tm1: Intercept
+tm1 <- tm_shape(sp.VC.pred) + 
+  tm_dots("Intercept", style = "cont") +
+  tm_POIs
+# tm2: dist
+tm2 <- tm_shape(sp.VC.pred) + 
+  tm_dots("dist", style = "cont") +
+  tm_POIs
+# tm1: Intercept
+tm3 <- tm_shape(sp.VC.pred) + 
+  tm_dots("lime", style = "cont") +
+  tm_POIs
+
+tmap_arrange(list(tm.GS, tm1, tm2, tm3), ncol = 2, nrow = 2)
+```
+
+**For now, please ignore the black triangles and squares.**
+
+In the upper left panel, one can see the GRF estimated and predicted by the classical geostatistical model. This can be compared to the upper right panel, i.e. the SVC associated with the intercept. In the bottom row we have the other two SVCs for `dist` and `lime`. I leave the comparison and interpretation of the results to the reader. What I want to point out is that the GRFs representing the SVCs are all inherently different. For instance, the ranges and variances differ substantially across all 3, as one can observe in the summary output. Further, as they all are zero mean Gaussian processes, the SVC are to be interpreted as deviations from the estimated means, which are given in the summary output above, or can be retrieved by:
+
+```{r coef means}
+coef(VC.fit)
+```
+
+So in the example above, this translates to the following. We have, say, two points of interest (POI) where we would like to receive the exact prediction equation for cadmium. These POIs are indicated with a black triangles and squares. We can look up the SVC estimates at thods locations to get the following two regression equations. 
+
+
+```{r POI equations}
+# POI1:
+# SVC deviations at POI1
+VC.pred[POI1.id, 1:3]
+# combined
+(coefs.poi1 <- coef(VC.fit) + c(as.numeric(VC.pred[POI1.id, 1:3]), 0))
+# POI2
+# SVC deviations at POI2
+VC.pred[POI2.id, 1:3]
+# combined
+(coefs.poi2 <- coef(VC.fit) + c(as.numeric(VC.pred[POI2.id, 1:3]), 0))
+
+options(digits = 3)
+```
+
+So, our two equations would be:
+
+$$ y(s_{POI1}) = `r coefs.poi1[1]` + (`r coefs.poi1[2]`) \cdot dist + `r coefs.poi1[3]` \cdot lime1 + (`r coefs.poi1[4]`) \cdot elev$$
+
+$$ y(s_{POI2}) = `r coefs.poi2[1]` + (`r coefs.poi2[2]`) \cdot dist + `r coefs.poi2[3]` \cdot lime1 + (`r coefs.poi2[4]`) \cdot elev$$
+
+The coefficients are indeed different except for `elev`, as we did not associate an SVC in the model to it. For all other coefficients, we see that the estimated marginal effects of the covariates change over space. This is a very nice example why SVC models are easy to interpret. For a fixed location, they are linear regression models. As a reference, we give the regression equation as estimated with OLS:
+
+$$ y = `r coef(lm.fit)[1]` + (`r coef(lm.fit)[2]`) \cdot dist + `r coef(lm.fit)[3]` \cdot lime1 + (`r coef(lm.fit)[4]`) \cdot elev.$$
+
+## Conclusion
+
+I hope that this example was easy to follow and showed the possibilities of how to model SVCs. I will continue my work on `varycoef` to add new and helpful features. On [Twitter](https://twitter.com/JakobDambon), I will use \#varycoef to announce updates. If there is a key feature missing or you have questions, please contact me by mailing to jakob.dambon (at) math.uzh.ch.
+
+*Kind regards,*
+
+*Jakob Dambon*
 

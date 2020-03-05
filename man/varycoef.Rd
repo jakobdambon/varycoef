@@ -3,10 +3,12 @@
 \docType{package}
 \name{varycoef}
 \alias{varycoef}
-\alias{varycoef-package}
 \title{varycoef: Modeling Spatially Varying Coefficients}
 \description{
-This package offers functions to estimate and predict spatially varying coefficient (SVC) models. Briefly described, one generalizes a linear regression equation such that the coefficients are no longer constant, but have the possibility to vary spatially. This is enabled by modelling the coefficients by Gaussian random fields with either an exponential or spherical covariance function. The advantages of such SVC models are that they are usually quite easy to interpret, yet they offer a very highe level of flexibility.
+This package offers functions to estimate and predict spatially varying coefficient (SVC) models. Briefly described, one generalizes a linear regression equation such that the coefficients are no longer constant, but have the possibility to vary spatially. This is enabled by modelling the coefficients by Gaussian processes with (currently) either an exponential or spherical covariance function. The advantages of such SVC models are that they are usually quite easy to interpret, yet they offer a very highe level of flexibility.
+}
+\details{
+The underlying methodology is decribed in Dambon et al. (2020) \url{https://arxiv.org/abs/2001.08089}, where further details can be found.
 }
 \section{Estimation and Prediction}{
 
@@ -19,7 +21,10 @@ With the before mentioned \code{\link{SVC_mle}} function one gets an object of c
 }
 
 \examples{
-vignette("example", package = "varycoef")
+vignette("manual", package = "varycoef")
 methods(class = "SVC_mle")
 
+}
+\author{
+Jakob Dambon
 }

@@ -23,6 +23,7 @@ logLik.SVC_mle <- function(object, ...) {
 
   profLik <- object$MLE$call.args$control$profileLik
 
+  # we transform from neg2LL to LL
   val <- (-1/2) * as.numeric(object$MLE$optim.output$value)
   attr(val, "penalized") <- (!is.null(object$MLE$call.args$control$pc.prior))
   attr(val, "profileLik") <- profLik
