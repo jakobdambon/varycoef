@@ -9,7 +9,7 @@
 SVC_mle_control(...)
 
 \method{SVC_mle_control}{default}(
-  cov.name = c("exp", "sph"),
+  cov.name = c("exp", "sph", "mat32", "mat52", "wend1", "wend2"),
   tapering = NULL,
   parallel = NULL,
   init = NULL,
@@ -20,7 +20,8 @@ SVC_mle_control(...)
   mean.est = c("GLS", "OLS"),
   pc.prior = NULL,
   extract_fun = FALSE,
-  hessian = FALSE,
+  hessian = TRUE,
+  dist = list(method = "euclidean"),
   ...
 )
 
@@ -29,40 +30,101 @@ SVC_mle_control(...)
 \arguments{
 \item{...}{further parameters yet to be implemented}
 
-\item{cov.name}{name of the covariance function defining the covariance matrix of the GRF. Currently, only \code{"exp"} for the exponential and \code{"exp"} for spherical covariance functions are supported.}
+\item{cov.name}{(\code{character(1)}) \cr
+Name of the covariance function defining the covariance matrix of the GRF.
+Currently, only \code{"exp"} for the exponential and \code{"exp"} for
+spherical covariance functions are supported.}
 
-\item{tapering}{if \code{NULL}, no tapering is applied. If a scalar is given, covariance tapering with this taper range is applied, for all GRF modelling the SVC.}
+\item{tapering}{(\code{NULL} or \code{numeric(1)}) \cr
+If \code{NULL}, no tapering is applied. If a scalar is given, covariance
+tapering with this taper range is applied, for all Gaussian processes
+modelling the SVC.}
 
-\item{parallel}{list with arguments for parallelization, see documentation of \code{\link[optimParallel]{optimParallel}}}
+\item{parallel}{(\code{NULL} or \code{list}) \cr
+If \code{NULL}, no parallelization is applied. If cluster has been
+established, define arguments for parallelization with a list, see
+documentation of \code{\link[optimParallel]{optimParallel}}.}
 
-\item{init}{numeric. Initial values for optimization procedure. The vector consists of p-times (alternating) scale and variance, the nugget variance and the p + p.fix mean effects}
+\item{init}{(\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
+Initial values for optimization procedure. If \code{NULL} is given, an
+initial vector is calculated (see Details). Otherwise, the vector is
+assumed to consist of q-times (alternating) range and variance,
+the nugget variance and if \code{profileLik = TRUE} p mean effects.}
 
-\item{lower}{lower bound for optim, default \code{NULL} sets the lower bounds to 1e-6 for covariance parameters and \code{-Inf} for mean parameters.}
+\item{lower}{(\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
+Lower bound for \code{init} in \code{optim}. Default \code{NULL} calculates
+the lower bounds (see Details).}
 
-\item{upper}{upper bound for optim, default \code{NULL} sets the upper bounds to \code{Inf} for covariance and mean parameters.}
+\item{upper}{(\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
+Upper bound for \code{init} in \code{optim}. Default \code{NULL} calculates
+the upper bounds (see Details).}
 
-\item{save.fitted}{logical. If \code{TRUE}, calculates the fitted values and residuals after MLE and saves them.}
+\item{save.fitted}{(\code{logical(1)}) \cr
+If \code{TRUE}, calculates the fitted values and residuals after MLE and
+stores them. This is necessary to call \code{\link{residuals}} and
+\code{\link{fitted}} methods afterwards.}
 
-\item{profileLik}{logical. If \code{TRUE}, MLE is done over profile Likelihood of covariance parameters.}
+\item{profileLik}{(\code{logical(1)}) \cr
+If \code{TRUE}, MLE is done over profile Likelihood of covariance
+parameters.}
 
-\item{mean.est}{if \code{profileLik} is \code{TRUE}, the means have to be estimated seperately. \code{"GLS"} uses the generalized least square estimate while \code{"OLS"} uses the ordinary least squares estimate.}
+\item{mean.est}{(\code{character(1)}) \cr
+If \code{profileLik = TRUE}, the means have to be estimated seperately for
+each step. \code{"GLS"} uses the generalized least square estimate while
+\code{"OLS"} uses the ordinary least squares estimate.}
 
-\item{pc.prior}{takes vector of \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to compute penalized complexity priors. This regulates the optimization process. Currently, only supported for Gaussian random fields of Matérn class. Based on the idea by Fulgstad et al. (2018) \doi{10.1080/01621459.2017.1415907}.}
+\item{pc.prior}{(\code{NULL} or \code{numeric(4)}) \cr
+If numeric vector is given, penalized complexity priors are applied. The
+order is \eqn{\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma} to give some
+prior believes for the range and the standard deviation of GPs, such that
+\eqn{P(\rho < \rho_0) = \alpha_\rho, P(\sigma > \sigma_0) = \alpha_\sigma}.
+This regulates the optimization process. Currently, only supported for
+GPs with of Matérn class covariance functions. Based on the idea by
+Fulgstad et al. (2018) \doi{10.1080/01621459.2017.1415907}.}
 
-\item{extract_fun}{logical. If \code{TRUE}, the function call of \code{\link{SVC_mle}} stops before the MLE and gives back the objective function of the MLE as well as all used arguments. If \code{FALSE}, regular MLE is conducted.}
+\item{extract_fun}{(\code{logical(1)}) \cr
+If \code{TRUE}, the function call of \code{\link{SVC_mle}} stops before
+the MLE and gives back the objective function of the MLE as well as all
+used arguments. If \code{FALSE}, regular MLE is conducted.}
 
-\item{hessian}{logical, feault is \code{FALSE}. Gives back Hessian matrix, see \link[stats]{optim}.}
+\item{hessian}{(\code{logical(1)}) \cr
+If \code{TRUE}, Hessian matrix is computed, see \link[stats]{optim}. This
+required to give the standard errors for covariance parameters and to do
+a Wald test on the variances, see \code{\link{summary.SVC_mle}}.}
 
-\item{object}{An object of class \code{SVC_mle}. The function then extracts the control settings from the particular function call used to compute \code{object}.}
+\item{dist}{(\code{list}) \cr
+List containing the arguments of \link[spam]{nearestdist}. This controls
+the method of how the distances and therefore dependency structures are
+calculated. The default gives Euclidean distances in a \eqn{d}-dimensional
+space. Further editable arguments are \code{p, miles, R}, see help file of
+\link[spam]{nearestdist}. The other arguments, i.e., \code{x, y, delta, upper},
+are set and not to be altered. Without tapering, \code{delta} is set to
+\eqn{1e99}.}
+
+\item{object}{(\code{SVC_mle}) \cr
+The function then extracts the control settings from the function call
+used to compute in the given \code{SVC_mle} object.}
 }
 \value{
 A list with which \code{\link{SVC_mle}} can be controlled.
 }
 \description{
-Function to set up control parameters for \code{\link{SVC_mle}}
+Function to set up control parameters for \code{\link{SVC_mle}}.
+In the following, we assume the SVC model to have \eqn{q} GPs, which model the
+SVCs, and \eqn{p} fixed effects.
 }
 \details{
-The argument \code{extract_fun} is useful, when one wants to modify the objective function. Further, when trying to parallelize the optimization, it is useful to check whether a single evaluation of the objective function takes longer than 0.05 seconds, cf. Gerber and Furrer (2019) \doi{10.32614/RJ-2019-030}. Platform specific issues can be sorted out by the user by setting up their own optimization.
+If not provided, the initial values as well as the lower and upper
+   bounds are calculated given the provided data. In particular, we require
+   the median distance between observations, the variance of the response and,
+   the ordinary least square (OLS) estimates, see \code{\link{init_bounds_optim}}.
+
+   The argument \code{extract_fun} is useful, when one wants to modify
+   the objective function. Further, when trying to parallelize the
+   optimization, it is useful to check whether a single evaluation of the
+   objective function takes longer than 0.05 seconds to evaluate,
+   cf. Gerber and Furrer (2019) \doi{10.32614/RJ-2019-030}. Platform specific
+   issues can be sorted out by the user by setting up their own optimization.
 }
 \examples{
 control <- SVC_mle_control(init = rep(0.3, 10))

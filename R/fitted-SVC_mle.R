@@ -6,7 +6,7 @@
 #' @param object \code{\link{SVC_mle}} object
 #' @param ...    further arguments
 #'
-#' @return data frame, fitted values to given data, i.e. the SVC as well as the response and their locations
+#' @return Data frame, fitted values to given data, i.e., the SVC as well as the response and their locations
 #'
 #' @author Jakob Dambon
 #'

@@ -28,11 +28,7 @@ logLik.SVC_mle <- function(object, ...) {
   attr(val, "penalized") <- (!is.null(object$MLE$call.args$control$pc.prior))
   attr(val, "profileLik") <- profLik
   attr(val, "nobs") <- nobs(object)
-  attr(val, "df") <- if (profLik) {
-    length(cov_par(object))
-  } else {
-    length(cov_par(object)) + length(coef(object))
-  }
+  attr(val, "df") <- object$df$df
   class(val) <- "logLik"
   val
 }

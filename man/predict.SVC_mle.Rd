@@ -2,7 +2,7 @@
 % Please edit documentation in R/SVC_mle.R
 \name{predict.SVC_mle}
 \alias{predict.SVC_mle}
-\title{Prediction of SVC (and response variable)}
+\title{Prediction of SVCs (and response variable)}
 \usage{
 \method{predict}{SVC_mle}(
   object,
@@ -14,29 +14,40 @@
 )
 }
 \arguments{
-\item{object}{output of \code{\link{SVC_mle}}}
+\item{object}{(\code{SVC_mle}) \cr
+Model obtained from \code{\link{SVC_mle}} function call.}
 
-\item{newlocs}{matrix of dimension n' x 2. These are the new locations the SVCs are predicted for. If \code{NULL}, the locations from the \code{SVC_mle} (i.e. \code{locs}) are considered.}
+\item{newlocs}{(\code{NULL} or \code{matrix(n.new, 2)}) \cr
+If \code{NULL}, then function uses observed locations of model to estimate
+SVCs. Otherwise, these are the new locations the SVCs are predicted for.}
 
-\item{newX}{optional matrix of dimension n' x pX. If provided, besides the predicted SVC, the function also returns the predicted response variable.}
+\item{newX}{(\code{NULL} or \code{matrix(n.new, q)}) \cr
+If provided (together with \code{newW}), the function also returns the
+predicted response variable.}
 
-\item{newW}{optional matrix of dimension n' x pW.}
+\item{newW}{(\code{NULL} or \code{matrix(n.new, p)}) \cr
+If provided (together with \code{newX}), the function also returns the
+predicted response variable.}
 
-\item{compute.y.var}{logical. If y will be estimated and \code{TRUE}, the standard deviation of each estimate will be computed.}
+\item{compute.y.var}{(\code{logical(1)}) \cr
+If \code{TRUE} and the response is being estimated, the predictive
+variance of each estimate will be computed.}
 
 \item{...}{further arguments}
 }
 \value{
-returns a data frame of n' rows and with columns
+The function returns a data frame of \code{n.new} rows and with
+columns
 \itemize{
-  \item \code{SVC_1, ..., SVC_p}, i.e. the predicted SVC at locations \code{newlocs}
+  \item \code{SVC_1, ..., SVC_p}: the predicted SVC at locations \code{newlocs}.
   \item \code{y.pred}, if \code{newX} and \code{newW} are provided
-  \item \code{y.var}, if \code{newX} and \code{newW} are provided and \code{compute.y.var} is set to \code{TRUE}.
+  \item \code{y.var}, if \code{newX} and \code{newW} are provided and
+  \code{compute.y.var} is set to \code{TRUE}.
   \item \code{loc_x, loc_y}, the locations of the predictions
 }
 }
 \description{
-Prediction of SVC (and response variable)
+Prediction of SVCs (and response variable)
 }
 \examples{
 ## ---- toy example ----
@@ -60,6 +71,8 @@ locs <- expand.grid(seq(0, 1, length.out = m),
 control <- SVC_mle_control(
   # initial values of optimization
   init = rep(0.1, 2*p+1),
+  # lower bound
+  lower = rep(1e-6, 2*p+1),
   # using profile likelihood
   profileLik = TRUE
 )
@@ -82,10 +95,10 @@ summary(fit)
 
 ## prediction
 # new location
-newlocs <- matrix(0.5, ncol = 2, nrow = 1)
+newlocs <- matrix(0.5, ncol = 2, nrow = 2)
 
 # new data
-X.new <- matrix(rnorm(p), ncol = p)
+X.new <- matrix(rnorm(2*p), ncol = p)
 
 # predicting SVCs
 predict(fit, newlocs = newlocs)
@@ -99,6 +112,12 @@ predict(fit, newlocs = newlocs,
         newX = X.new, newW = X.new,
         compute.y.var = TRUE)
 
+}
+\references{
+Dambon, J. A., Sigrist, F., Furrer, R. (2021)
+   \emph{Maximum likelihood estimation of spatially varying coefficient
+   models for large data with an application to real estate price prediction},
+   Spatial Statistics \doi{10.1016/j.spasta.2020.100470}
 }
 \seealso{
 \code{\link{SVC_mle}}

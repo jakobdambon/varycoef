@@ -9,7 +9,8 @@
 \arguments{
 \item{x}{\code{\link{SVC_mle}} object}
 
-\item{digits}{numeric, number of digits to be plotted}
+\item{digits}{(\code{numeric})
+Number of digits to be plotted.}
 
 \item{...}{further arguments}
 }

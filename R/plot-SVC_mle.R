@@ -2,18 +2,19 @@
 
 #' @title Plotting Residuals of \code{SVC_mle} model
 #'
-#' @description Method to plot the residuals from an \code{\link{SVC_mle}} object. For this, \code{save.fitted} has to be \code{TRUE} in \code{\link{SVC_mle_control}}.
+#' @description Method to plot the residuals from an \code{\link{SVC_mle}}
+#' object. For this, \code{save.fitted} has to be \code{TRUE} in
+#' \code{\link{SVC_mle_control}}.
 #'
-#' @param x          \code{\link{SVC_mle}} object
-#' @param which      numeric, indicating which of the 3 plots should be plotted
-#' @param legend.pos character describing the position of the legend in the spatial residual plot, see \code{\link[graphics]{legend}}
+#' @param x          (\code{\link{SVC_mle}})
+#' @param which      (\code{numeric}) \cr A numeric vector and subset of
+#' \code{1:2} indicating which of the 2 plots should be plotted.
 #' @param ...        further arguments
 #'
-#' @return a maximum 3 plots
+#' @return a maximum 2 plots
 #' \itemize{
 #'   \item Tukey-Anscombe plot, i.e. residuals vs. fitted
 #'   \item QQ-plot
-#'   \item spatial residuals
 #' }
 #'
 #' @author Jakob Dambon
@@ -66,8 +67,8 @@
 #' # only QQ-plot
 #' plot(fit, which = 2)
 #'
-#' # all three plots next to each other
-#' oldpar <- par(mfrow = c(1, 3))
+#' # two plots next to each other
+#' oldpar <- par(mfrow = c(1, 2))
 #' plot(fit)
 #' par(oldpar)
 #'
@@ -75,9 +76,14 @@
 #' @importFrom graphics plot abline legend
 #' @method plot SVC_mle
 #' @export
-plot.SVC_mle <- function(x, which = 1:3, legend.pos = "bottomright", ...) {
+plot.SVC_mle <- function(x, which = 1:2, ...) {
 
-  stopifnot(!is.null(x$residuals))
+  stopifnot(
+    # residuals needed
+    !is.null(x$residuals),
+    # only two kinds of plots supported
+    all(which %in% 1:2)
+  )
 
   ## Tukey-Anscombe
   if (1 %in% which) {
@@ -95,24 +101,24 @@ plot.SVC_mle <- function(x, which = 1:3, legend.pos = "bottomright", ...) {
     qqline(residuals(x))
   }
 
-  ## spatial residuals
-  if (3 %in% which) {
-    loc_x <- fitted(x)$loc_x
-    loc_y <- fitted(x)$loc_y
-    res <- residuals(x)
-    cex.range <- range(sqrt(abs(res)))
-
-    plot(loc_x, loc_y,
-         type = "p",
-         main = "Spatial Residuals Plot",
-         xlab = "x locations", ylab = "y locations",
-         pch = 1, col = ifelse(res < 0, "blue", "orange"),
-         cex = sqrt(abs(res)))
-
-    legend(legend.pos,
-           legend = c("pos. residuals", "neg. residuals", "min", "max"),
-           pch = c(19, 19, 1, 1),
-           col = c("orange", "blue", "grey", "grey"),
-           pt.cex = c(1, 1, cex.range))
-  }
+  # ## spatial residuals
+  # if (3 %in% which) {
+  #   loc_x <- fitted(x)$loc_x
+  #   loc_y <- fitted(x)$loc_y
+  #   res <- residuals(x)
+  #   cex.range <- range(sqrt(abs(res)))
+  #
+  #   plot(loc_x, loc_y,
+  #        type = "p",
+  #        main = "Spatial Residuals Plot",
+  #        xlab = "x locations", ylab = "y locations",
+  #        pch = 1, col = ifelse(res < 0, "blue", "orange"),
+  #        cex = sqrt(abs(res)))
+  #
+  #   legend(legend.pos,
+  #          legend = c("pos. residuals", "neg. residuals", "min", "max"),
+  #          pch = c(19, 19, 1, 1),
+  #          col = c("orange", "blue", "grey", "grey"),
+  #          pt.cex = c(1, 1, cex.range))
+  # }
 }

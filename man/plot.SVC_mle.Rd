@@ -4,27 +4,27 @@
 \alias{plot.SVC_mle}
 \title{Plotting Residuals of \code{SVC_mle} model}
 \usage{
-\method{plot}{SVC_mle}(x, which = 1:3, legend.pos = "bottomright", ...)
+\method{plot}{SVC_mle}(x, which = 1:2, ...)
 }
 \arguments{
-\item{x}{\code{\link{SVC_mle}} object}
+\item{x}{(\code{\link{SVC_mle}})}
 
-\item{which}{numeric, indicating which of the 3 plots should be plotted}
-
-\item{legend.pos}{character describing the position of the legend in the spatial residual plot, see \code{\link[graphics]{legend}}}
+\item{which}{(\code{numeric}) \cr A numeric vector and subset of
+\code{1:2} indicating which of the 2 plots should be plotted.}
 
 \item{...}{further arguments}
 }
 \value{
-a maximum 3 plots
+a maximum 2 plots
 \itemize{
   \item Tukey-Anscombe plot, i.e. residuals vs. fitted
   \item QQ-plot
-  \item spatial residuals
 }
 }
 \description{
-Method to plot the residuals from an \code{\link{SVC_mle}} object. For this, \code{save.fitted} has to be \code{TRUE} in \code{\link{SVC_mle_control}}.
+Method to plot the residuals from an \code{\link{SVC_mle}}
+object. For this, \code{save.fitted} has to be \code{TRUE} in
+\code{\link{SVC_mle_control}}.
 }
 \examples{
 #' ## ---- toy example ----
@@ -72,8 +72,8 @@ summary(fit)
 # only QQ-plot
 plot(fit, which = 2)
 
-# all three plots next to each other
-oldpar <- par(mfrow = c(1, 3))
+# two plots next to each other
+oldpar <- par(mfrow = c(1, 2))
 plot(fit)
 par(oldpar)
 

@@ -12,10 +12,12 @@
 \item{...}{further arguments}
 }
 \value{
-numeric, residuals of model
+(\code{numeric(n)})
+   Residuals of model
 }
 \description{
-Method to extract the residuals from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call
+Method to extract the residuals from an \code{\link{SVC_mle}}
+object. This is only possible if \code{save.fitted} was set to \code{TRUE}.
 }
 \author{
 Jakob Dambon

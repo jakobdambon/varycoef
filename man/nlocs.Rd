@@ -2,9 +2,10 @@
 % Please edit documentation in R/nlocs.R
 \name{nlocs}
 \alias{nlocs}
-\title{Extact Number of Unique Locations
+\title{Extract Number of Unique Locations
 
-Function to extract the number of unique locations in the data set used in an MLE of the \code{\link{SVC_mle}} object.}
+Function to extract the number of unique locations in the data set used in
+an MLE of the \code{\link{SVC_mle}} object.}
 \usage{
 nlocs(object)
 }
@@ -15,9 +16,10 @@ nlocs(object)
 integer with the number of unique locations
 }
 \description{
-Extact Number of Unique Locations
+Extract Number of Unique Locations
 
-Function to extract the number of unique locations in the data set used in an MLE of the \code{\link{SVC_mle}} object.
+Function to extract the number of unique locations in the data set used in
+an MLE of the \code{\link{SVC_mle}} object.
 }
 \author{
 Jakob Dambon

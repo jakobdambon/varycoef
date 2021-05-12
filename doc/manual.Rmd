@@ -15,7 +15,6 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(varycoef)
-library(sp)
 ```
 
 ## Introduction
@@ -69,8 +68,7 @@ To give a simple example, we start by sampling artificial data. So define an *fu
 # number of SVC
 p <- 3
 
-(pars <- data.frame(mu = rep(0, p),
-                    nu = rep(0.5, p),
+(pars <- data.frame(mu = rep(0, p), 
                     var = c(0.1, 0.2, 0.3), 
                     scale = c(0.3, 0.1, 0.2)))
 nugget.var <- 0.05
@@ -85,7 +83,10 @@ m <- 20
 sp.SVC <- fullSVC_reggrid(m = m, p = p, 
                           cov_pars = pars, 
                           nugget = nugget.var)
-head(sp.SVC)
+
+library(sp)
+# visualization
+spplot(sp.SVC, colorkey = TRUE)
 ```
 
 
@@ -103,7 +104,7 @@ head(X)
 We compute the response $y$:
 
 ```{r compute response}
-y <- apply(X * as.matrix(sp.SVC[, 1:p]), 1, sum) + sp.SVC[, p+1]
+y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 ```
 
 
@@ -147,7 +148,7 @@ r <- c(0.5, 0.3, 0.1)
 out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   
-  locs <- as.matrix(sp.SVC[, c("locs1", "locs2")])
+  locs <- coordinates(sp.SVC)
   if (is.null(taper.range)) {
     d <- as.matrix(dist(locs))
   } else {
@@ -164,13 +165,7 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   W <- X
   
-  outer.W <- if (is.null(taper.range)) {
-    lapply(1:p, function(j) W[, j]%o%W[, j])
-  } else {
-    lapply(1:p, function(j) {
-      spam::as.spam(W[, j]%o%W[, j] * (d<=taper.range))
-    })
-  }
+  outer.W <- lapply(1:p, function(j) W[, j]%o%W[, j])
   
   
   # tapering?
@@ -182,17 +177,11 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
     spam::cov.wend1(d, c(taper.range, 1, 0))
   }
   
-  x <- c(rep(1, 2*p+1))#, rep(0, p))
+  x <- c(rep(1, 2*p+1), rep(0, p))
   
-  S_y <- varycoef:::Sigma_y(x, cov.func, outer.W, taper)
+  S_y <- varycoef:::Sigma_y(x, p, cov.func, outer.W, taper)
   
-  Rstruct <- if (is.spam(S_y)) {
-    chol(S_y)
-  } else {
-    NULL
-  }
-  
-  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, mean.est = NULL, taper = taper, Rstruct = Rstruct, profile = TRUE)
+  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, taper = taper)
   
   list(d, taper, S_y, nll)
 })
@@ -358,7 +347,7 @@ control.p <- control
 control.p$parallel <- parallel.control
 
 # step 4: run SVC_mle
-fit.p <- SVC_mle(y = y, X = X, locs = as.matrix(sp.SVC[, p + 2:3]),
+fit.p <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC),
                  control = control.p)
 
 # step 5: stop cluster
@@ -380,7 +369,7 @@ We can now start the MLE . The following function call takes a few second.
 
 
 ```{r SVC MLE}
-fit <- SVC_mle(y = y, X = X, locs = as.matrix(sp.SVC[, p+2:3]), control = control)
+fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC), control = control)
 ```
 
 The received object `fit` is of class `r class(fit)`. For this class, there are numerous methods such as:
@@ -398,6 +387,10 @@ summary(fit)
 # residual plots
 oldpar <- par(mfrow = c(1, 2))
 plot(fit, which = 1:2)
+
+par(mfrow = c(1, 1))
+plot(fit, which = 3)
+
 par(oldpar)
 ```
 
@@ -417,7 +410,7 @@ Since we know the true SVC, we can compute the error in prediction and compare i
 
 ```{r visualization of prediction, fig.width=7, fig.height=7}
 colnames(pred.SVC)[1:p] <- paste0("pred.",colnames(pred.SVC)[1:p])
-coordinates(pred.SVC) <- ~loc_1+loc_2
+coordinates(pred.SVC) <- ~loc_x+loc_y
 all.SVC <- cbind(pred.SVC, sp.SVC[, 1:3])
 
 # compute errors
@@ -460,7 +453,7 @@ X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
 y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 
 
-fit <- SVC_mle(y = y, X = X, locs = sp.SVC[, p + 2:3])
+fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC))
 
 
 
@@ -468,7 +461,7 @@ sp2500 <- predict(fit)
 
 
 colnames(sp2500)[1:p] <- paste0("pred.",colnames(sp2500)[1:p])
-coordinates(sp2500) <- ~loc_1+loc_2
+coordinates(sp2500) <- ~loc_x+loc_y
 all.SVC <- cbind(sp2500, sp.SVC[, 1:3])
 
 # compute errors
