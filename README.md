@@ -27,4 +27,5 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 | 0.2.8    | Revisions for CRAN submission | 8th of October 2019 |
 | 0.2.9    | Final CRAN version | 10th of October 2019 |
 | 0.2.10   | parallelization using `optimParallel`, citation info, orcID | 23rd of February 2020 |
-| 0.2.11   | URL, Bugreports in DESCRIPTION, hessian option now selectable | TBD |
+| 0.3.0    | Joint variable selection method available on CRAN | 13th of January 2021 |
+| 0.3.1    | New methods (summary output), pre JSS Publication | 12th of May 2021 |
