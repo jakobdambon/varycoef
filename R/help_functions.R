@@ -297,7 +297,7 @@ check_cov_lower <- function(cv, q) {
 #'
 #'    | Parameter    | Lower bound   | Initial Value     | Upper Bound   |
 #'    | ------------ | -------------:| -----------------:| -------------:|
-#'    | Range        |  \eqn{d/1000} |         \eqn{d/4} |  \eqn{10^4 d} |
+#'    | Range        |  \eqn{d/1000} |         \eqn{d/4} |    \eqn{10 d} |
 #'    | Variance     |       \eqn{0} | \eqn{s^2_y/(q+1)} | \eqn{10s^2_y} |
 #'    | Nugget       | \eqn{10^{-6}} | \eqn{s^2_y/(q+1)} | \eqn{10s^2_y} |
 #'    | Mean \eqn{j} |   \code{-Inf} |         \eqn{b_j} |    \code{Inf} |
@@ -313,7 +313,11 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 
   # lower bound for optim
   if (is.null(control$lower)) {
-    lower <- c(rep(c(med_dist/1000, 0), q), 0.00001, rep(-Inf, p))
+    lower <- if (control$profileLik) {
+      c(rep(c(med_dist/1000, 0), q), 0.00001)
+    } else {
+      c(rep(c(med_dist/1000, 0), q), 0.00001, rep(-Inf, p))
+    }
   } else {
     lower <- control$lower
     if (length(lower) != length(id_obj)) {
@@ -326,7 +330,11 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 
   # upper bound for optim
   if (is.null(control$upper)) {
-    upper <- c(rep(c(1000*med_dist, 10*y_var), q), 10*y_var, rep(Inf, p))
+    upper <- if (control$profileLik) {
+      c(rep(c(10*med_dist, 10*y_var), q), 10*y_var)
+    } else {
+      c(rep(c(10*med_dist, 10*y_var), q), 10*y_var, rep(Inf, p))
+    }
   } else {
     upper <- control$upper
     if (length(upper) != length(id_obj)) {
@@ -342,7 +350,11 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 
   # init
   if (is.null(control$init)) {
-    init <- c(rep(c(med_dist/4, y_var/(q+1)), q), y_var/(q+1), OLS_mu)
+    init <- if (control$profileLik) {
+      c(rep(c(med_dist/4, y_var/(q+1)), q), y_var/(q+1))
+    } else {
+      c(rep(c(med_dist/4, y_var/(q+1)), q), y_var/(q+1), OLS_mu)
+    }
   } else {
     init <- control$init
     if (length(init) != length(id_obj)) {

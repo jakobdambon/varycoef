@@ -39,7 +39,7 @@ the variance of the response \code{y_var}, and let \eqn{b_j} be the OLS
 coefficients of the linear model. The computed values are given in the
 table below.\tabular{lrrr}{
    Parameter \tab Lower bound \tab Initial Value \tab Upper Bound \cr
-   Range \tab \eqn{d/1000} \tab \eqn{d/4} \tab \eqn{10^4 d} \cr
+   Range \tab \eqn{d/1000} \tab \eqn{d/4} \tab \eqn{10 d} \cr
    Variance \tab \eqn{0} \tab \eqn{s^2_y/(q+1)} \tab \eqn{10s^2_y} \cr
    Nugget \tab \eqn{10^{-6}} \tab \eqn{s^2_y/(q+1)} \tab \eqn{10s^2_y} \cr
    Mean \eqn{j} \tab \code{-Inf} \tab \eqn{b_j} \tab \code{Inf} \cr

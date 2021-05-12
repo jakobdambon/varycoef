@@ -12,7 +12,7 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 `vignette("example", package = "varycoef")`
 
 
-## Next steps 
+## Version History
 
 | Version  | Functionality | Prognosed Roll-out |
 |----------|---------------|------|
