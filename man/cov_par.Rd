@@ -2,28 +2,38 @@
 % Please edit documentation in R/cov_par.R
 \name{cov_par}
 \alias{cov_par}
+\alias{cov_par.SVC_mle}
+\alias{cov_par.SVC_selection}
 \title{Extact Covariance Parameters
 
-Function to extract the covariance parameters from an \code{\link{SVC_mle}} object.}
+Function to extract the covariance parameters from an \code{\link{SVC_mle}}
+or \code{\link{SVC_selection}}object.}
 \usage{
-cov_par(object, ...)
+cov_par(...)
+
+\method{cov_par}{SVC_mle}(object, ...)
+
+\method{cov_par}{SVC_selection}(object, ...)
 }
 \arguments{
-\item{object}{\code{\link{SVC_mle}} object}
-
 \item{...}{further arguments}
+
+\item{object}{\code{\link{SVC_mle}} or \code{\link{SVC_selection}} object}
 }
 \value{
-vector with covariance parameters and attributes what kind
+vector with covariance parameters with the following attributes:
 \itemize{
-  \item \code{"GRF"}, charachter, describing the GRF used, see \code{\link{SVC_mle_control}}.
-  \item \code{"tapering"}, either \code{NULL} if no tapering is applied of the taper range.
+  \item \code{"GRF"}, charachter, describing the covariance function used for
+  the GP, see \code{\link{SVC_mle_control}}.
+  \item \code{"tapering"}, either \code{NULL} if no tapering is applied of
+  the taper range.
 }
 }
 \description{
 Extact Covariance Parameters
 
-Function to extract the covariance parameters from an \code{\link{SVC_mle}} object.
+Function to extract the covariance parameters from an \code{\link{SVC_mle}}
+or \code{\link{SVC_selection}}object.
 }
 \author{
 Jakob Dambon

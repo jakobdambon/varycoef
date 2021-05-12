@@ -1,21 +1,46 @@
 year <- sub("-.*", "", Sys.Date())
 note <- sprintf("R package version %s", meta$Version)
 
-bibentry(bibtype = "Manual",
-         title = "\\texttt{varycoef}: Modeling Spatially Varying Coefficients",
-         author = c(person("Jakob A.", "Dambon"),
-                    person("Fabio", "Sigrist"),
-                    person("Reinhard", "Furrer")),
-         year = year,
-         note = note,
-         url = "https://CRAN.R-project.org/package=varycoef")
 
-bibentry(bibtype = "Article",
-         author = c(person("Jakob A.", "Dambon"),
-                    person("Fabio", "Sigrist"),
-                    person("Reinhard", "Furrer")),
-         title = "Maximum Likelihood Estimation of Spatially Varying Coefficient Models for Large Data with an Application to Real Estate Price Prediction",
-         journal = "ArXiv e-prints",
-         url = "https://arxiv.org/abs/2001.08089",
-         year = 2020)
+citHeader("To cite varycoef in publications, please use:")
+
+
+citEntry(
+  entry = "article",
+  author = c(person("Jakob A.", "Dambon"),
+             person("Fabio", "Sigrist"),
+             person("Reinhard", "Furrer")),
+  title = "Maximum Likelihood Estimation of Spatially Varying Coefficient Models for Large Data with an Application to Real Estate Price Prediction",
+  journal = "Spatial Statistics 41 (100470)",
+  year = "2021",
+  url = "https://doi.org/10.1016/j.spasta.2020.100470",
+  textVersion = "Dambon, JA., Sigrist, F., Furrer, R. (2021) Maximum Likelihood Estimation of Spatially Varying Coefficient Models for Large Data with an Application to Real Estate Price Prediction, Spatial Statistics 41 (100470)"
+)
+
+
+citEntry(
+  entry = "manual",
+  author = c(person("Jakob A.", "Dambon"),
+             person("Fabio", "Sigrist"),
+             person("Reinhard", "Furrer")),
+  title = "\\texttt{varycoef}: Modeling Spatially Varying Coefficients",
+  year = year,
+  url = "https://CRAN.R-project.org/package=varycoef",
+  textVersion = paste0("Dambon, JA., Sigrist, F., Furrer, R. (", year, ") varycoef: Modeling Spatially Varying Coefficients, ", note)
+)
+
+
+citEntry(
+  entry = "article",
+  author = c(person("Jakob A.", "Dambon"),
+             person("Fabio", "Sigrist"),
+             person("Reinhard", "Furrer")),
+  title = "Joint Variable Selection of both Fixed and Random Effects for Gaussian Process-based Spatially Varying Coefficient Models",
+  journal = "ArXiv Preprint",
+  year = "2021",
+  url = "https://arxiv.org/abs/2101.01932",
+  textVersion = "Dambon, JA., Sigrist, F., Furrer, R. (2021) Joint Variable Selection of both Fixed and Random Effects for Gaussian Process-based Spatially Varying Coefficient Models, ArXiv Preprint arXiv:2101.01932"
+)
+
+
 

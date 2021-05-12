@@ -1,7 +1,8 @@
 
-#' @title Extact Number of Unique Locations
+#' @title Extract Number of Unique Locations
 #'
-#' Function to extract the number of unique locations in the data set used in an MLE of the \code{\link{SVC_mle}} object.
+#' Function to extract the number of unique locations in the data set used in
+#' an MLE of the \code{\link{SVC_mle}} object.
 #'
 #' @param object \code{\link{SVC_mle}} object
 #'

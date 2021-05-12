@@ -23,17 +23,28 @@ SVC_mle(...)
 \arguments{
 \item{...}{further arguments}
 
-\item{y}{numeric response vector of dimension n.}
+\item{y}{(\code{numeric(n)}) \cr
+Response vector.}
 
-\item{X}{matrix of covariates of dimension n x pX. Intercept has to be added manually.}
+\item{X}{(\code{matrix(n, p)}) \cr
+Design matrix. Intercept has to be added manually.}
 
-\item{locs}{matrix of locations of dimension n X 2. May contain multiple observations at single location which (may) cause a permutation of \code{y}, \code{X}, \code{W} and \code{locs}.}
+\item{locs}{(\code{matrix(n, d)}) \cr
+Locations in a \eqn{d}-dimensional space. May contain multiple
+observations at single location.}
 
-\item{W}{Optional matrix of covariates with fixed effects, i.e. non-SVC, of dimension n x pW}
+\item{W}{(\code{NULL} or \code{matrix(n, q)}) \cr
+If \code{NULL}, the same matrix as provided in \code{X} is used. This
+fits a full SVC model, i.e., each covariate effect is modeled with a mean
+and an SVC. In this case we have \eqn{p = q}. If optional matrix \code{W}
+is provided, SVCs are only modeled for covariates within matrix \code{W}.}
 
-\item{control}{list of control paramaters, usually given by \code{\link{SVC_mle_control}}}
+\item{control}{(\code{list}) \cr
+Control paramaters given by \code{\link{SVC_mle_control}}.}
 
-\item{optim.control}{list of control arguments for optimization function, see Details in \code{\link{optim}}}
+\item{optim.control}{(\code{list}) \cr
+Control arguments for optimization function, see Details in
+\code{\link{optim}}.}
 
 \item{formula}{Formula describing the fixed effects in SVC model. The response, i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
 
@@ -42,24 +53,37 @@ SVC_mle(...)
 \item{RE_formula}{Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
 }
 \value{
-Object of class \code{SVC_mle} if \code{control$extract_fun} is \code{FALSE}, meaning that a MLE has been conducted. Otherwise, if \code{control$extract_fun} is \code{TRUE}, the function return a list with the objective function being used in the optimization (named \code{obj_fun}) and the arguments to call it (named \code{args}). For further detials, see description of \code{\link{SVC_mle_control}}.
+Object of class \code{SVC_mle} if \code{control$extract_fun = FALSE},
+meaning that a MLE has been conducted. Otherwise, if \code{control$extract_fun = TRUE},
+the function returns a list with two entries:
+\itemize{
+   \item \code{obj_fun}: the objective function used in the optimization
+   \item \code{args}: the arguments to evaluate the objective function.
+}
+For further detials, see description of \code{\link{SVC_mle_control}}.
 }
 \description{
-Calls MLE of the SVC model defined as:
+Conducts a maximum likelihood estimation (MLE) for a Gaussian
+  process-based SVC model as described in Dambon et al. (2021)
+  \doi{10.1016/j.spasta.2020.100470}. More specifially, the model is
+  defined as:
 
 \deqn{y(s) = X \mu + W \eta (s) + \epsilon(s)}
 
 where:
 \itemize{
-  \item y is the response (vector of length n)
-  \item X is the data matrix for the fixed effects covariates
-  \item \eqn{\mu} is the vetor containing the fixed effects
-  \item W is the data matrix for the SVCs represented by zero mean GRF
-  \item \eqn{\eta} are the SVCs represented by zero mean GRF
+  \item \eqn{y} is the response (vector of length \eqn{n})
+  \item \eqn{X} is the data matrix for the fixed effects covariates. The
+  dimensions are \eqn{n} times \eqn{p}. This leads to \eqn{p} fixed effects.
+  \item \eqn{\mu} is the vector containing the fixed effects
+  \item W is the data matrix for the SVCs modeled by GPs. The dimensions are
+  \eqn{n} times \eqn{q}. This lead to \eqn{q} SVCs in the model.
+  \item \eqn{\eta} are the SVCs represented by a GP.
   \item \eqn{\epsilon} is the nugget effect
 }
 
-The MLE is done by calling the function \code{optim}.
+The MLE is an numeric optimization that runs \code{\link[stats]{optim}} or
+(if parallelized) \code{\link[optimParallel]{optimParallel}}.
 }
 \examples{
 ## ---- toy example ----
@@ -83,6 +107,8 @@ locs <- expand.grid(seq(0, 1, length.out = m),
 control <- SVC_mle_control(
   # initial values of optimization
   init = rep(0.1, 2*p+1),
+  # lower bound
+  lower = rep(1e-6, 2*p+1),
   # using profile likelihood
   profileLik = TRUE
 )
@@ -155,9 +181,15 @@ newlocs <- expand.grid(
 SVC <- predict(fit, newlocs = as.matrix(newlocs))
 # visualization
 sp.SVC <- SVC
-coordinates(sp.SVC) <- ~loc_x+loc_y
+coordinates(sp.SVC) <- ~loc_1+loc_2
 spplot(sp.SVC, colorkey = TRUE)
 }
+}
+\references{
+Dambon, J. A., Sigrist, F., Furrer, R. (2021)
+   \emph{Maximum likelihood estimation of spatially varying coefficient
+   models for large data with an application to real estate price prediction},
+   Spatial Statistics \doi{10.1016/j.spasta.2020.100470}
 }
 \seealso{
 \code{\link{predict.SVC_mle}}

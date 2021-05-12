@@ -15,7 +15,8 @@
 object of class \code{summary.SVC_mle} with summarized values of the MLE.
 }
 \description{
-Method to construct a \code{summary.SVC_mle} object out of a \code{\link{SVC_mle}} object.
+Method to construct a \code{summary.SVC_mle} object out of a
+\code{\link{SVC_mle}} object.
 }
 \seealso{
 \code{\link{SVC_mle}}

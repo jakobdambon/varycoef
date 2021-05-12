@@ -4,7 +4,8 @@
 #' @description Method to print an \code{\link{SVC_mle}} object.
 #'
 #' @param x      \code{\link{SVC_mle}} object
-#' @param digits numeric, number of digits to be plotted
+#' @param digits  (\code{numeric})
+#'    Number of digits to be plotted.
 #' @param ...    further arguments
 #'
 #' @author Jakob Dambon

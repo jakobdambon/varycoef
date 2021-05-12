@@ -12,7 +12,7 @@
 \item{...}{further arguments}
 }
 \value{
-data frame, fitted values to given data, i.e. the SVC as well as the response and their locations
+Data frame, fitted values to given data, i.e., the SVC as well as the response and their locations
 }
 \description{
 Method to extract the fitted values from an \code{\link{SVC_mle}} object. This is only possible if \code{save.fitted} was set to \code{TRUE} in the control of the function call

@@ -2,20 +2,25 @@
 % Please edit documentation in R/coef-SVC_mle.R
 \name{coef.SVC_mle}
 \alias{coef.SVC_mle}
+\alias{coef.SVC_selection}
 \title{Extact Mean Effects}
 \usage{
 \method{coef}{SVC_mle}(object, ...)
+
+\method{coef}{SVC_selection}(object, ...)
 }
 \arguments{
-\item{object}{\code{\link{SVC_mle}} object}
+\item{object}{\code{\link{SVC_mle}} or \code{\link{SVC_selection}} object}
 
 \item{...}{further arguments}
 }
 \value{
-named vector with mean effects, i.e. \eqn{\mu} from \code{\link[varycoef]{SVC_mle}}
+named vector with mean effects, i.e. \eqn{\mu} from
+\code{\link[varycoef]{SVC_mle}}
 }
 \description{
-Method to extract the mean effects from an \code{\link{SVC_mle}} object.
+Method to extract the mean effects from an \code{\link{SVC_mle}}
+or \code{\link{SVC_selection}} object.
 }
 \author{
 Jakob Dambon
