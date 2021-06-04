@@ -15,7 +15,6 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(varycoef)
-library(sp)
 ```
 
 ## Introduction
@@ -64,47 +63,36 @@ where $\eta$ is the joint mean-zero GRF. Note that both model are the same if $\
 
 To give a simple example, we start by sampling artificial data. So define an *full SVC model* as given above and sample from a regular grid using a help function:
 
-
 ```{r define and sample SVC, warning=FALSE, fig.width=7, fig.height=7, message=FALSE}
 # number of SVC
 p <- 3
 
-(pars <- data.frame(mu = rep(0, p),
-                    nu = rep(0.5, p),
+(pars <- data.frame(mean = rep(0, p), 
                     var = c(0.1, 0.2, 0.3), 
                     scale = c(0.3, 0.1, 0.2)))
 nugget.var <- 0.05
 
 # sqrt of total number of observations
-m <- 20
-
-
-
+m <- 10; n <- m^2
+locs <- expand.grid(
+  x = seq(0, 1, length.out = m), 
+  y = seq(0, 1, length.out = m)
+)
 
 # function to sample SVCs
-sp.SVC <- fullSVC_reggrid(m = m, p = p, 
-                          cov_pars = pars, 
-                          nugget = nugget.var)
-head(sp.SVC)
+sp.SVC <- sample_fullSVC(
+  df.pars = pars, 
+  nugget.sd = sqrt(nugget.var), 
+  locs = as.matrix(locs), 
+  cov.name = "exp"
+)
+str(sp.SVC)
+
+head(cbind(y = sp.SVC$y, X = sp.SVC$X))
 ```
 
 
 
-We further need some covariates which we sample from a standard normal. In order to model an intercept, we set $x^{(1)} = 1$:
-
-```{r sample covariates}
-# total number of observation
-n <- m^2
-
-X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
-head(X)
-```
-
-We compute the response $y$:
-
-```{r compute response}
-y <- apply(X * as.matrix(sp.SVC[, 1:p]), 1, sum) + sp.SVC[, p+1]
-```
 
 
 ## MLE in `varycoef`
@@ -142,35 +130,27 @@ By default, the `tapering` entry is `NULL`, i.e. no tapering is applied. If a sc
 
 
 ```{r illustrate tapering, echo = FALSE, fig.width=7, fig.height=7}
-
+W <- sp.SVC$X
+q <- dim(W)[2]
 r <- c(0.5, 0.3, 0.1)
 out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
   
   
-  locs <- as.matrix(sp.SVC[, c("locs1", "locs2")])
-  if (is.null(taper.range)) {
-    d <- as.matrix(dist(locs))
-  } else {
-    d <- spam::nearest.dist(locs, delta = taper.range)
-  }
-  
+  d <- varycoef:::own_dist(x = locs, taper = taper.range) 
   
   # get covariance function
   raw.cov.func <- varycoef:::MLE.cov.func("exp")
   
   # covariance function
   cov.func <- function(x) raw.cov.func(d, x)
-    
   
-  W <- X
-  
-  outer.W <- if (is.null(taper.range)) {
-    lapply(1:p, function(j) W[, j]%o%W[, j])
-  } else {
-    lapply(1:p, function(j) {
-      spam::as.spam(W[, j]%o%W[, j] * (d<=taper.range))
-    })
-  }
+  outer.W <- lapply(1:q, function(k) {
+    if (is.null(taper.range)) {
+      W[, k]%o%W[, k] 
+    } else {
+      W[, k]%o%W[, k]*spam::cov.wend1(d, c(taper.range, 1, 0))
+    } 
+  })
   
   
   # tapering?
@@ -182,17 +162,11 @@ out <- lapply(c(list(NULL), as.list(r)), function(taper.range) {
     spam::cov.wend1(d, c(taper.range, 1, 0))
   }
   
-  x <- c(rep(1, 2*p+1))#, rep(0, p))
+  x <- c(rep(1, 2*p+1), rep(0, p))
   
   S_y <- varycoef:::Sigma_y(x, cov.func, outer.W, taper)
   
-  Rstruct <- if (is.spam(S_y)) {
-    chol(S_y)
-  } else {
-    NULL
-  }
-  
-  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, y, X, W, mean.est = NULL, taper = taper, Rstruct = Rstruct, profile = TRUE)
+  nll <- function() varycoef:::n2LL(x, cov.func, outer.W, sp.SVC$y, sp.SVC$X, W, mean.est = NULL, taper = taper)
   
   list(d, taper, S_y, nll)
 })
@@ -234,90 +208,6 @@ library(microbenchmark)
 boxplot(mb, unit = "ms", log = TRUE, xlab = "tapering", ylab = "time (milliseconds)")
 ```
 
-
-
-#### Initial Values
-
-To run an MLE, we need initial values for all variances and the scales as well as the means. A good starting point for the means are the estimated coefficients of an OLS, i.e.:
-
-```{r mean initials}
-(mu.init <- coef(lm(y~.-1, data = data.frame(y = y, X = X))))
-```
-
-
-For the variance, we take the estimated variance of the OLS method, i.e 
-
-```{r variance initials}
-(var.init <- sigma(lm(y~.-1, data = data.frame(y = y, X = X)))^2)
-```
-
-For the scale, we remind ourselves that the effective range of an exponential GRF is approximately 3 times its range. Since in our case we are in an restricted domain of the unit square, any dependency structure on a distance above the maximum distance in the domain, we cannot model. Therefore we suggest to take an initial scale of 
-
-
-```{r scale initials}
-scale.init <- 0.2
-```
-
-
-The vector of initial values is then:
-
-
-```{r joint initials}
-init <- c(
-  # GRFs scales and variances
-  rep(c(scale.init, var.init), p),
-  # nugget variance
-  var.init,
-   # means
-  mu.init)
-```
-
-
-One can either overwrite the default initial value (`control$init`) or call `SVC_mle_control` with corresponding arguments:
-
-```{r overwrite initials}
-# default
-control$init
-
-# overwrite
-control$init <- init
-
-# create new
-control <- SVC_mle_control(init = init)
-```
-
-**The default values gives initial values of $0.3$ for the variances and ranges and $0$ for the means, which might not be the best option in general.**
-
-
-#### Lower and Upper Bounds
-
-The optimization function `optim` allows with its chosen method `"L-BFGS-B"` the usage of lower and upper bounds. The lower and upper bounds for each parameter can be given in correspondence to the order in the initial values.
-
-
-#### Save Fitted Values
-
-The argument `save.fitted` takes logical values and decides whether the fitted values of the SVC model after the MLE should be computed. This takes some extra time, but can be useful since an extraction of those fitted values as well as the residuals is possible using a methods `fitted` or `residuals`. **In case of allocation errors, set to `FALSE`**. 
-
-```{r overwrite save.fitted}
-# default
-control$save.fitted
-
-# overwrite
-control$save.fitted <- TRUE
-```
-
-#### Profile Likelihood
-
-In some SVC models, it might be an advantage to optimize not over all parameters, i.e. the mean and the covariance parameters. The motivation here is a dimension reduction of the parameter space. Setting `profileLik` to `TRUE`, the optimization will be done using the profile likelihood of the covariance parameters. The mean effects are then implicitly calculated using the *generalized least squares estimate*. 
-
-```{r show profileLik}
-# default
-control$profileLik
-```
-
-**Attention:** Since the number of parameters is reduced, one should also be aware that the initial values as well as the lower and upper bounds are given correctly. 
-
-
 #### Regularizing Priors
 
 We implemented a usage of penalizing complexity priors. The argument `pc.prior` takes a vector of length 4 as an input where the values are $\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma$ to compute penalized complexity priors. One wants to penalize the lower tail on the range parameter as well as the upper tail of the standard deviation:
@@ -358,7 +248,7 @@ control.p <- control
 control.p$parallel <- parallel.control
 
 # step 4: run SVC_mle
-fit.p <- SVC_mle(y = y, X = X, locs = as.matrix(sp.SVC[, p + 2:3]),
+fit.p <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC),
                  control = control.p)
 
 # step 5: stop cluster
@@ -380,7 +270,8 @@ We can now start the MLE . The following function call takes a few second.
 
 
 ```{r SVC MLE}
-fit <- SVC_mle(y = y, X = X, locs = as.matrix(sp.SVC[, p+2:3]), control = control)
+control <- SVC_mle_control()
+fit <- SVC_mle(y = sp.SVC$y, X = sp.SVC$X, locs = as.matrix(locs), control = control)
 ```
 
 The received object `fit` is of class `r class(fit)`. For this class, there are numerous methods such as:
@@ -398,6 +289,9 @@ summary(fit)
 # residual plots
 oldpar <- par(mfrow = c(1, 2))
 plot(fit, which = 1:2)
+
+par(mfrow = c(1, 1))
+
 par(oldpar)
 ```
 
@@ -416,14 +310,15 @@ pred.SVC <- predict(fit)
 Since we know the true SVC, we can compute the error in prediction and compare it to the true values.
 
 ```{r visualization of prediction, fig.width=7, fig.height=7}
+library(sp)
 colnames(pred.SVC)[1:p] <- paste0("pred.",colnames(pred.SVC)[1:p])
 coordinates(pred.SVC) <- ~loc_1+loc_2
-all.SVC <- cbind(pred.SVC, sp.SVC[, 1:3])
+all.SVC <- cbind(pred.SVC, sp.SVC$beta)
 
 # compute errors
-all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$SVC_1
-all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$SVC_2
-all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$SVC_3
+all.SVC$err.SVC_1 <- all.SVC$pred.SVC_1 - all.SVC$X1
+all.SVC$err.SVC_2 <- all.SVC$pred.SVC_2 - all.SVC$X2
+all.SVC$err.SVC_3 <- all.SVC$pred.SVC_3 - all.SVC$X3
 
 colnames(all.SVC@data) <- paste0(rep(c("pred.", "true.", "err."), each = p), "SVC_", rep(1:p, 3))
 
@@ -460,7 +355,7 @@ X <- matrix(c(rep(1, n), rnorm((p-1)*n)), ncol = p)
 y <- apply(X * as.matrix(sp.SVC@data[, 1:p]), 1, sum) + sp.SVC@data[, p+1]
 
 
-fit <- SVC_mle(y = y, X = X, locs = sp.SVC[, p + 2:3])
+fit <- SVC_mle(y = y, X = X, locs = coordinates(sp.SVC))
 
 
 
@@ -468,7 +363,7 @@ sp2500 <- predict(fit)
 
 
 colnames(sp2500)[1:p] <- paste0("pred.",colnames(sp2500)[1:p])
-coordinates(sp2500) <- ~loc_1+loc_2
+coordinates(sp2500) <- ~loc_x+loc_y
 all.SVC <- cbind(sp2500, sp.SVC[, 1:3])
 
 # compute errors

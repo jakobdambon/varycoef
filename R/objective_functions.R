@@ -1,7 +1,13 @@
 # holds objective functions to be optimized, i.e. negative log-likelihood of SVC-Models
 
-n2LL <- function(x, cov_func, outer.W, y, X, W, mean.est,
-                 taper = NULL, pc.dens = NULL, Rstruct = NULL, profile = TRUE) {
+n2LL <- function(
+  x, cov_func, outer.W, y, X, W,
+  mean.est = NULL,
+  taper = NULL,
+  pc.dens = NULL,
+  Rstruct = NULL,
+  profile = TRUE
+) {
 
   q <- dim(W)[2]
   p <- dim(X)[2]

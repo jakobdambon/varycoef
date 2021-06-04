@@ -179,11 +179,7 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
       for (k in 2:q) {
         Cov <- do.call(cov_func, list(c(x[2*(k-1) + 1:2], 0)))
 
-        if (is.spam(Sigma)) {
-          Sigma@entries <- Sigma@entries + (Cov@entries * outer.W[[k]]@entries)
-        } else {
-          Sigma <- Sigma + (Cov * outer.W[[k]])
-        }
+        Sigma <- Sigma + (Cov * outer.W[[k]])
       }
     }
 
@@ -195,13 +191,10 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
       spam::diag.spam(rep(x[2*q+1], n))
     }
 
-    Sigma <- Sigma * taper
+    # Sigma <- Sigma * taper
     # add lower tri. cov-matrices up and mirror them to get full cov-matrix
     # due to spam::nearest.dist design
 
-    # as.spam probieren
-
-    # ??SIgma + t(Sigma) - diag(Sigma) + nug
     return(spam::lower.tri.spam(Sigma) +
              spam::t.spam(Sigma) +
              nug)
@@ -314,9 +307,9 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
   # lower bound for optim
   if (is.null(control$lower)) {
     lower <- if (control$profileLik) {
-      c(rep(c(med_dist/1000, 0), q), 0.00001)
+      c(rep(c(med_dist/1000, 0), q), 1e-6)
     } else {
-      c(rep(c(med_dist/1000, 0), q), 0.00001, rep(-Inf, p))
+      c(rep(c(med_dist/1000, 0), q), 1e-6, rep(-Inf, p))
     }
   } else {
     lower <- control$lower
@@ -444,4 +437,83 @@ prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
     RE = data.frame(est = output_par[1:(2*q+1)], SE = se_RE),
     FE = data.frame(est = mu, SE = se_FE)
   ))
+}
+
+#
+# own_dist <- function(
+#   locs, newlocs = NULL, taper = NULL, method_list = NULL
+# ) {
+#   if (is.null(taper)) {
+#     d <- as.matrix(
+#       do.call(dist,
+#         c(list(x = locs, diag = TRUE, upper = TRUE), method_list)))
+#   } else {
+#     d <- do.call(spam::nearest.dist,
+#                  c(list(x = locs,
+#                         delta  = control$tapering),
+#                    control$dist))
+#   }
+# }
+
+
+#' Computes (Cross-) Distances
+#'
+#' @param x     (\code{matrix}) \cr Matrix containing locations
+#' @param y     (\code{NULL} or \code{matrix}) \cr If \code{NULL}, computes the
+#'     distances between \code{x}. Otherwise, computes cross-distances, i.e.,
+#'     pair-wise distances between rows of \code{x} and \code{y}.
+#' @param taper (\code{NULL} or \code{numeric(1)}) \cr If \code{NULL}, all
+#'     distances are considered. Otherwise, only distances shorter than
+#'     \code{taper} are used. Hence the output will be a sparse matrix of type
+#'     \code{\link[spam]{spam}}.
+#' @param ...   Further arguments for either \code{\link[stats]{dist}} or
+#'     \code{\link[spam]{nearest.dist}}.
+#'
+#' @return A \code{matrix} or \code{spam} object.
+#' @importFrom spam nearest.dist
+#' @importFrom stats dist
+own_dist <- function(x, y = NULL, taper = NULL, ...) {
+
+  d <- if (is.null(taper)) {
+    # without tapering
+    if (is.null(y)) {
+      # no cross distances
+      as.matrix(do.call(
+        dist,
+        c(list(x = x, diag = TRUE, upper = TRUE), ...)
+      ))
+    } else {
+      # cross distances
+      as.matrix(do.call(
+        spam::nearest.dist,
+        c(list(x = x, y = y, delta = 1e99), ...)
+      ))
+    }
+  } else {
+    # with tapering
+    if (is.null(y)) {
+      # no cross distances
+      do.call(
+        spam::nearest.dist,
+        c(list(x = x, delta = taper), ...)
+      )
+    } else {
+      # cross distances
+      do.call(
+        spam::nearest.dist,
+        c(list(x = x, y = y, delta = taper), ...)
+      )
+    }
+  }
+  # return output
+  d
+}
+
+get_taper <- function(cov.name, d, tapering) {
+  switch(
+    cov.name,
+    "exp" = spam::cov.wend1(d, c(tapering, 1, 0)),
+    "mat32" = spam::cov.wend1(d, c(tapering, 1, 0)),
+    "mat52" = spam::cov.wend2(d, c(tapering, 1, 0))
+  )
 }

@@ -45,22 +45,32 @@ MLE_computation <- function(y, X, locs, W,
   }
   id_cov <- (1:(2*q+1))
 
-  ## -- define distance matrices, covariance functions, and taper matrix -----
-
   # define distance matrix
-  if (is.null(control$tapering)) {
-    d <- as.matrix(do.call(dist,
-                           c(list(x = locs,
-                                  diag = TRUE,
-                                  upper = TRUE),
-                             control$dist)))
-  } else {
-    d <- do.call(spam::nearest.dist,
-                 c(list(x = locs,
-                        delta  = control$tapering),
-                   control$dist))
-  }
+  d <- do.call(
+    own_dist,
+    c(list(x = locs, taper = control$tapering), control$dist)
+  )
 
+  ## -- check and initialize optim vectors -----
+  if (is.null(control$lower) | is.null(control$upper) | is.null(control$init)) {
+    # median distances
+    med_dist <- if (is.matrix(d)) {
+      median(as.numeric(d))
+    } else {
+      options(spam.trivalues=TRUE)
+      median(lower.tri(d@entries))
+    }
+    # variance of response
+    y_var <- var(y)
+    # fixed effects estimates by ordinary least squares (OLS)
+    OLS_mu <- coef(lm(y~X-1))
+  } else {
+    med_dist <- y_var <- OLS_mu <- NULL
+  }
+  # liu - _L_ower _I_nit _U_pper
+  liu <- init_bounds_optim(control, p, q, id_obj, med_dist, y_var, OLS_mu)
+
+  ## -- define distance matrices, covariance functions, and taper matrix -----
   # get covariance function
   raw.cov.func <- MLE.cov.func(control$cov.name)
 
@@ -71,25 +81,11 @@ MLE_computation <- function(y, X, locs, W,
   # tapering?
   if (is.null(control$tapering)) {
     taper <-NULL
-    outer.W <- lapply(1:q, function(j) W[, j]%o%W[, j])
+    outer.W <- lapply(1:q, function(k) W[, k]%o%W[, k])
   } else {
-    taper <- switch(control$cov.name,
-                    "exp" = spam::cov.wend1(d, c(control$taper, 1, 0)),
-                    "mat32" = spam::cov.wend1(d, c(control$taper, 1, 0)),
-                    "mat52" = spam::cov.wend2(d, c(control$taper, 1, 0)),
-                    "sph" =
-                      {
-                        # not actual tapering
-                        h <- d
-                        h@entries <- rep(1, length(h@entries))
-                        h
-                      })
-    # spam to get the sparse structure of d on outer.W,
-    d_struct <- d
-    d_struct@entries <-  rep(1, length(d@entries))
-
-    outer.W <- lapply(1:q, function(j) {
-      (W[, j]%o%W[, j]) * d_struct
+    taper <- get_taper(control$cov.name, d, control$taper)
+    outer.W <- lapply(1:q, function(k) {
+      (W[, k]%o%W[, k]) * taper
     })
 
     options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
@@ -102,22 +98,6 @@ MLE_computation <- function(y, X, locs, W,
     )
     Rstruct <- spam::chol.spam(Sigma1)
   }
-
-  ## -- check and initialize optim vectors -----
-  # median distances
-  med_dist <- if (is.matrix(d)) {
-    median(as.numeric(d))
-  } else {
-    options(spam.trivalues=TRUE)
-    median(lower.tri(d)@entries)
-  }
-  # variance of response
-  y_var <- var(y)
-  # fixed effects estimates by ordinary least squares (OLS)
-  OLS_mu <- coef(lm(y~X-1))
-
-  # liu - _L_ower _I_nit _U_pper
-  liu <- init_bounds_optim(control, p, q, id_obj, med_dist, y_var, OLS_mu)
 
   ## -- pc priors -----
   # ordering: pcp = c(\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma)
@@ -277,6 +257,7 @@ MLE_computation <- function(y, X, locs, W,
 fitted_computation <- function(SVC_obj, y, X, W, locs) {
   class(SVC_obj) <- "SVC_mle"
 
+
   predict.SVC_mle(SVC_obj, newlocs = locs, newX = X, newW = W)
 
 }
@@ -303,7 +284,8 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
       edof = ML_estimate$comp.args$edof),
     fitted = NULL,
     residuals = NULL,
-    data = list(y = y, X = X, W = W, locs = locs))
+    data = list(y = y, X = X, W = W, locs = locs)
+  )
 
 
   if (control$save.fitted) {
@@ -321,21 +303,25 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #' @title Set Parameters for \code{SVC_mle}
 #'
 #' @description Function to set up control parameters for \code{\link{SVC_mle}}.
-#' In the following, we assume the SVC model to have \eqn{q} GPs, which model the
-#' SVCs, and \eqn{p} fixed effects.
+#' In the following, we assume the GP-based SVC model to have \eqn{q} GPs which
+#' model the SVCs and \eqn{p} fixed effects.
 #'
 #' @param cov.name  (\code{character(1)}) \cr
-#'    Name of the covariance function defining the covariance matrix of the GRF.
-#'    Currently, only \code{"exp"} for the exponential and \code{"exp"} for
-#'    spherical covariance functions are supported.
+#'    Name of the covariance function of the GPs. Currently, the following are
+#'    implemented: \code{"exp"} for the exponential, \code{"sph"} for
+#'    spherical, \code{"mat32"} and \code{"mat52"} for Matern class covariance
+#'    functions with smoothness 3/2 or 5/2, as well as \code{"wend1"} and
+#'    \code{"wend2"} for Wendland class covariance functions with kappa 1 or 2.
 #' @param tapering  (\code{NULL} or \code{numeric(1)}) \cr
 #'    If \code{NULL}, no tapering is applied. If a scalar is given, covariance
 #'    tapering with this taper range is applied, for all Gaussian processes
-#'    modelling the SVC.
+#'    modeling the SVC. Only defined for Matern class covariance functions,
+#'    i.e., set \code{cov.name} either to \code{"exp"}, \code{"mat32"}, or
+#'    \code{"mat52"}.
 #' @param parallel  (\code{NULL} or \code{list}) \cr
 #'    If \code{NULL}, no parallelization is applied. If cluster has been
 #'    established, define arguments for parallelization with a list, see
-#'    documentation of \code{\link[optimParallel]{optimParallel}}.
+#'    documentation of \code{\link[optimParallel]{optimParallel}}. See Examples.
 #' @param init  (\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
 #'    Initial values for optimization procedure. If \code{NULL} is given, an
 #'    initial vector is calculated (see Details). Otherwise, the vector is
@@ -375,14 +361,13 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #'    required to give the standard errors for covariance parameters and to do
 #'    a Wald test on the variances, see \code{\link{summary.SVC_mle}}.
 #' @param dist     (\code{list}) \cr
-#'    List containing the arguments of \link[spam]{nearestdist}. This controls
+#'    List containing the arguments of \link[stats]{dist} or
+#'    \link[spam]{nearest.dist}. This controls
 #'    the method of how the distances and therefore dependency structures are
 #'    calculated. The default gives Euclidean distances in a \eqn{d}-dimensional
-#'    space. Further editable arguments are \code{p, miles, R}, see help file of
-#'    \link[spam]{nearestdist}. The other arguments, i.e., \code{x, y, delta, upper},
-#'    are set and not to be altered. Without tapering, \code{delta} is set to
-#'    \eqn{1e99}.
-#' @param ...         further parameters yet to be implemented
+#'    space. Further editable arguments are \code{p, miles, R}, see respective
+#'    help files of \link[stats]{dist} or \link[spam]{nearest.dist}.
+#' @param ...     Further Arguments yet to be implemented
 #'
 #' @details If not provided, the initial values as well as the lower and upper
 #'    bounds are calculated given the provided data. In particular, we require
@@ -405,6 +390,23 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #' control <- SVC_mle_control()
 #' control$init <- rep(0.3, 10)
 #'
+#' \donttest{
+#' # Code for setting up parallel computing
+#' require(parallel)
+#' # exchange number of nodes (1) for detectCores()-1 or appropriate number
+#' cl <- makeCluster(1, setup_strategy = "sequential")
+#' clusterEvalQ(
+#'   cl = cl,
+#'   {
+#'     library(spam)
+#'     library(varycoef)
+#'   })
+#' # use this list for parallel argument in SVC_mle_control
+#' parallel.control <- list(cl = cl, forward = TRUE, loginfo = TRUE)
+#' # SVC_mle goes here ...
+#' # DO NOT FORGET TO STOP THE CLUSTER!
+#' stopCluster(cl); rm(cl)
+#' }
 #' @author Jakob Dambon
 #'
 #' @export
@@ -427,29 +429,37 @@ SVC_mle_control.default <- function(
   extract_fun = FALSE,
   hessian = TRUE,
   dist = list(method = "euclidean"),
-  ...) {
-  stopifnot(is.null(tapering) |
-              (tapering>=0) |
-              is.logical(save.fitted) |
-              is.logical(profileLik) |
-              is.logical(extract_fun) |
-              is.logical(hessian))
+  ...
+) {
+  stopifnot(
+    is.null(tapering) | (tapering>=0),
+    is.logical(save.fitted),
+    is.logical(profileLik),
+    is.logical(extract_fun),
+    is.logical(hessian)
+  )
 
+  # if (!is.null(tapering) &
+  #     !(match.arg(cov.name) %in% c("sph", "wend1", "wend2"))) {
+  #   stop("Covariance tapering only defined for Matern class covariance functions.")
+  # }
 
-  list(cov.name = match.arg(cov.name),
-       tapering = tapering,
-       parallel = parallel,
-       init = init,
-       lower = lower,
-       upper = upper,
-       save.fitted = save.fitted,
-       profileLik = profileLik,
-       mean.est = match.arg(mean.est),
-       pc.prior = pc.prior,
-       extract_fun = extract_fun,
-       hessian = hessian,
-       dist = dist,
-       ...)
+  list(
+    cov.name = match.arg(cov.name),
+    tapering = tapering,
+    parallel = parallel,
+    init = init,
+    lower = lower,
+    upper = upper,
+    save.fitted = save.fitted,
+    profileLik = profileLik,
+    mean.est = match.arg(mean.est),
+    pc.prior = pc.prior,
+    extract_fun = extract_fun,
+    hessian = hessian,
+    dist = dist,
+    ...
+  )
 }
 
 #' @param object  (\code{SVC_mle}) \cr
@@ -647,10 +657,9 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
   # check if W is given arguments
   if (is.null(W)) {W <- X}
 
-  # issue warning if called with default control settings
+  # call SVC_mle with default control settings if non are provided
   if (is.null(control)) {
     control <- SVC_mle_control()
-    warning("Using default control settings. Do they make sense in your case?")
   }
 
   # Start ML Estimation using optim
@@ -669,7 +678,7 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
   } else {
     # after optimization
     object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
-
+    object$call <- match.call()
     class(object) <- "SVC_mle"
     return(object)
   }
@@ -702,315 +711,4 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
                   control = control,
                   optim.control = optim.control)
 }
-
-
-
-
-
-#' Prediction of SVCs (and response variable)
-#'
-#' @param object  (\code{SVC_mle}) \cr
-#'    Model obtained from \code{\link{SVC_mle}} function call.
-#' @param newlocs  (\code{NULL} or \code{matrix(n.new, 2)}) \cr
-#'    If \code{NULL}, then function uses observed locations of model to estimate
-#'    SVCs. Otherwise, these are the new locations the SVCs are predicted for.
-#' @param newX  (\code{NULL} or \code{matrix(n.new, q)}) \cr
-#'    If provided (together with \code{newW}), the function also returns the
-#'    predicted response variable.
-#' @param newW  (\code{NULL} or \code{matrix(n.new, p)}) \cr
-#'    If provided (together with \code{newX}), the function also returns the
-#'    predicted response variable.
-#' @param compute.y.var  (\code{logical(1)}) \cr
-#'    If \code{TRUE} and the response is being estimated, the predictive
-#'    variance of each estimate will be computed.
-#' @param ...           further arguments
-#'
-#' @return The function returns a data frame of \code{n.new} rows and with
-#' columns
-#' \itemize{
-#'   \item \code{SVC_1, ..., SVC_p}: the predicted SVC at locations \code{newlocs}.
-#'   \item \code{y.pred}, if \code{newX} and \code{newW} are provided
-#'   \item \code{y.var}, if \code{newX} and \code{newW} are provided and
-#'   \code{compute.y.var} is set to \code{TRUE}.
-#'   \item \code{loc_x, loc_y}, the locations of the predictions
-#' }
-#'
-#' @seealso \code{\link{SVC_mle}}
-#'
-#' @author Jakob Dambon
-#' @references Dambon, J. A., Sigrist, F., Furrer, R. (2021)
-#'    \emph{Maximum likelihood estimation of spatially varying coefficient
-#'    models for large data with an application to real estate price prediction},
-#'    Spatial Statistics \doi{10.1016/j.spasta.2020.100470}
-#'
-#' @examples
-#' ## ---- toy example ----
-#' ## sample data
-#' # setting seed for reproducibility
-#' set.seed(123)
-#' m <- 7
-#' # number of observations
-#' n <- m*m
-#' # number of SVC
-#' p <- 3
-#' # sample data
-#' y <- rnorm(n)
-#' X <- matrix(rnorm(n*p), ncol = p)
-#' # locations on a regular m-by-m-grid
-#' locs <- expand.grid(seq(0, 1, length.out = m),
-#'                     seq(0, 1, length.out = m))
-#'
-#' ## preparing for maximum likelihood estimation (MLE)
-#' # controls specific to MLE
-#' control <- SVC_mle_control(
-#'   # initial values of optimization
-#'   init = rep(0.1, 2*p+1),
-#'   # lower bound
-#'   lower = rep(1e-6, 2*p+1),
-#'   # using profile likelihood
-#'   profileLik = TRUE
-#' )
-#'
-#' # controls specific to optimization procedure, see help(optim)
-#' opt.control <- list(
-#'   # number of iterations (set to one for demonstration sake)
-#'   maxit = 1,
-#'   # tracing information
-#'   trace = 6
-#' )
-#'
-#' ## starting MLE
-#' fit <- SVC_mle(y = y, X = X, locs = locs,
-#'                control = control,
-#'                optim.control = opt.control)
-#'
-#' ## output: convergence code equal to 1, since maxit was only 1
-#' summary(fit)
-#'
-#' ## prediction
-#' # new location
-#' newlocs <- matrix(0.5, ncol = 2, nrow = 2)
-#'
-#' # new data
-#' X.new <- matrix(rnorm(2*p), ncol = p)
-#'
-#' # predicting SVCs
-#' predict(fit, newlocs = newlocs)
-#'
-#' # predicting SVCs and calculating response
-#' predict(fit, newlocs = newlocs,
-#'         newX = X.new, newW = X.new)
-#'
-#' # predicting SVCs, calculating response and predictive variance
-#' predict(fit, newlocs = newlocs,
-#'         newX = X.new, newW = X.new,
-#'         compute.y.var = TRUE)
-#'
-#' @import spam
-#' @importFrom stats sd
-#' @export
-predict.SVC_mle <- function(
-  object,
-  newlocs = NULL,
-  newX = NULL,
-  newW = NULL,
-  compute.y.var = FALSE,
-  ...
-) {
-
-  mu <- coef(object)
-  cov.par <- cov_par(object)
-
-
-  pW <- dim(as.matrix(object$MLE$call.args$W))[2]
-  pX <- dim(as.matrix(object$MLE$call.args$X))[2]
-  n <- length(object$MLE$call.args$y)
-
-  # if no new locations are given,
-  # predict for training data
-  if (is.null(newlocs)) {
-    # compute untapered distance matrix
-    newlocs <- object$MLE$call.args$locs
-    d <- d_cross <- as.matrix(do.call(spam::nearest.dist,
-                                      c(list(x = newlocs,
-                                             delta  = 1e99,
-                                             upper = NULL),
-                                        object$MLE$call.args$control$dist)))
-    n.new <- n
-  } else {
-    newlocs <- as.matrix(newlocs)
-
-    d <- as.matrix(do.call(spam::nearest.dist,
-                           c(list(x = object$MLE$call.args$locs,
-                                  delta  = 1e99,
-                                  upper = NULL),
-                             object$MLE$call.args$control$dist)))
-    d_cross <- as.matrix(do.call(spam::nearest.dist,
-                                 c(list(x = newlocs,
-                                        y = object$MLE$call.args$locs,
-                                        delta  = 1e99),
-                                   object$MLE$call.args$control$dist)))
-    n.new <- nrow(newlocs)
-  }
-
-
-  # covariance function (not tapered)
-  raw.cf <- MLE.cov.func(object$MLE$call.args$control$cov.name)
-
-
-
-  if (is.null(object$MLE$call.args$control$taper)) {
-    taper <- NULL
-
-    # cross-covariance (newlocs and locs)
-    cf_cross <- function(x) raw.cf(d_cross, x)
-
-  } else {
-    taper <- switch(
-      object$MLE$call.args$control$cov.name,
-      "exp" = spam::cov.wend1(d, c(object$MLE$call.args$control$taper, 1, 0)),
-      "mat32" = spam::cov.wend1(d, c(object$MLE$call.args$control$taper, 1, 0)),
-      "mat52" = spam::cov.wend2(d, c(object$MLE$call.args$control$taper, 1, 0)),
-      "sph" =
-        {
-          spam::as.spam(d<object$MLE$call.args$control$taper)
-        })
-
-    taper_cross <- switch(
-      object$MLE$call.args$control$cov.name,
-      "exp" = spam::cov.wend1(d_cross, c(object$MLE$call.args$control$taper, 1, 0)),
-      "mat32" = spam::cov.wend1(d_cross, c(object$MLE$call.args$control$taper, 1, 0)),
-      "mat52" = spam::cov.wend2(d_cross, c(object$MLE$call.args$control$taper, 1, 0)),
-      "sph" =
-        {
-          spam::as.spam(d_cross<object$MLE$call.args$control$taper)
-        })
-
-    # cross-covariance (newlocs and locs)
-    cf_cross <- function(x) raw.cf(d_cross, x)*taper_cross
-  }
-
-  # covariance y
-  cf <- function(x) raw.cf(d, x)
-
-
-
-  cov_y <- object$MLE$comp.args$Sigma_final
-
-
-  # cross-covariance beta' y
-  cov_b_y <- Sigma_b_y(x = cov.par,
-                       cov.func = cf_cross,
-                       W = as.matrix(object$MLE$call.args$W),
-                       n.new = n.new)
-
-
-
-  eff <- cov_b_y %*% solve(cov_y) %*%
-    (object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
-
-  eff <- matrix(eff, ncol = pW)
-
-
-  if (!is.null(newX) & !is.null(newW)) {
-
-    stopifnot(pW == ncol(newW),
-              pX == ncol(newX))
-
-    y.pred <- apply(newW * eff, 1, sum) + newX %*% mu
-
-    # computation of standard deviation fro each observation.
-    if (compute.y.var) {
-      # Have to compute
-      #
-      # var.y = Sigma_ynew - Sigma_ynew_y Sigma_y^-1 Sigma_y_ynew
-      #
-      # Sigma_ynew   = A
-      # Sigma_ynew_y = B
-      # Sigma_y      = C
-      # Sigma_y_ynew = D = t(C)
-
-
-      # Part B:
-      cov_ynew_y <- Sigma_y_y(cov.par,
-                            cov.func = cf_cross,
-                            X = object$MLE$call.args$W,
-                            newX = newW)
-
-      # Part A:
-      d_new <- if (n.new == 1) {
-        as.matrix(0)
-      } else {
-        as.matrix(do.call(spam::nearest.dist,
-                          c(list(x = newlocs,
-                                 delta  = 1e99,
-                                 upper = NULL),
-                            object$MLE$call.args$control$dist)))
-      }
-
-
-
-      if (is.null(object$MLE$call.args$control$taper)) {
-        outer.newW <- lapply(1:pW, function(j) {
-          (newW[, j]%o%newW[, j]) })
-      } else {
-        outer.newW <- lapply(1:pW, function(j) {
-          (newW[, j]%o%newW[, j]) * spam::as.spam(d_new<object$MLE$call.args$control$taper)})
-      }
-
-      if (is.null(object$MLE$call.args$control$taper)) {
-        taper_new <- NULL
-
-
-
-      } else {
-        taper_new <- switch(
-          object$MLE$call.args$control$cov.name,
-          "exp" = spam::cov.wend1(d_new, c(object$MLE$call.args$control$taper, 1, 0)),
-          "mat32" = spam::cov.wend1(d_new, c(object$MLE$call.args$control$taper, 1, 0)),
-          "mat52" = spam::cov.wend2(d_new, c(object$MLE$call.args$control$taper, 1, 0)),
-          "sph" =
-            {
-              spam::as.spam(d_new<object$MLE$call.args$control$taper)
-            })
-      }
-
-      # cross-covariance (newlocs and locs)
-      cf_new <- function(x) raw.cf(d_new, x)
-
-      cov_ynew <- Sigma_y(cov.par,
-                          cf_new,
-                          outer.W = outer.newW,
-                          taper = taper_new)
-
-
-      # Part C: already calculated with cov_y
-
-
-      # Computation of variance of y
-      var.y <- diag(cov_ynew) - diag(cov_ynew_y %*% solve(cov_y) %*% t(cov_ynew_y))
-
-      # form out put
-      out <- as.data.frame(cbind(eff, y.pred, var.y, newlocs))
-      colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "y.var", paste0("loc_", 1:ncol(newlocs)))
-    } else {
-      out <- as.data.frame(cbind(eff, y.pred, newlocs))
-      colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", paste0("loc_", 1:ncol(newlocs)))
-    }
-
-
-  } else {
-
-    if (compute.y.var)
-      warning("Please provide new X and W matrix to predict y and its standard deviation.")
-
-    out <- as.data.frame(cbind(eff, newlocs))
-    colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), paste0("loc_", 1:ncol(newlocs)))
-  }
-
-
-
-  return(out)
-}
-
 

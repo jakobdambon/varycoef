@@ -36,6 +36,7 @@ summary.SVC_mle <- function(object, ...) {
   covpars[-(2*(1:q)), 3:4] <- NA
 
   ans <- list(
+    call = object$call,
     pX = p,
     pW = q,
     nobs = nobs(object),
@@ -85,7 +86,9 @@ summary.SVC_mle <- function(object, ...) {
 #' @export
 print.summary.SVC_mle <- function(x, digits = max(3L, getOption("digits") - 3L),
                                   ...) {
-  cat(paste0("\nCall:\nSVC_mle with ",
+  cat("\nCall:\n", paste(deparse(x$call), sep = "\n", collapse = "\n"),
+      "\n\n", sep = "")
+  cat(paste0("Fitting a GP-based SVC model with ",
              x$pX,
              " fixed effect(s) and ",
              x$pW,

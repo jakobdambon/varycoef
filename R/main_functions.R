@@ -1,3 +1,0 @@
-varycoef <- function() {
-
-}

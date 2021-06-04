@@ -42,6 +42,7 @@ Imports:
     smoof,
     sp
 Suggests:
+    DiceKriging,
     gstat,
     knitr,
     microbenchmark,

@@ -21,9 +21,11 @@
 #' @importFrom stats BIC
 #' @export
 BIC.SVC_mle <- function(object, ...) {
-  -2*logLik(object) +
-    log(nobs(object)) *
-    object$df$df
+  as.numeric(
+    -2*logLik(object) +
+      log(nobs(object)) *
+      object$df$df
+  )
 }
 
 
@@ -34,7 +36,9 @@ BIC.SVC_mle <- function(object, ...) {
 #' @importFrom stats AIC
 #' @export
 AIC.SVC_mle <- function(object, conditional = "BW", ...) {
-  -2*logLik(object) +
-    2*(object$df$edof + object$df$df)
+  as.numeric(
+    -2*logLik(object) +
+      2*(object$df$edof + object$df$df)
+  )
 }
 
