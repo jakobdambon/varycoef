@@ -16,7 +16,7 @@ Be sure that the `devtools` package is already installed. Check out the vignette
 
 | Version  | Functionality | Prognosed Roll-out |
 |----------|---------------|------|
-| 0.3.2    | Parscale optin in SVC_mle_control |
+| 0.3.2    | Parscale optin in SVC_mle_control | 19th of July 2021|
 | 0.3.1    | New methods (summary output), pre JSS Submission | 12th of May 2021 |
 | 0.3.0    | Joint variable selection method available on CRAN | 13th of January 2021 |
 | 0.2.10   | parallelization using `optimParallel`, citation info, orcID | 23rd of February 2020 |
