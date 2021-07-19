@@ -22,6 +22,7 @@ SVC_mle_control(...)
   extract_fun = FALSE,
   hessian = TRUE,
   dist = list(method = "euclidean"),
+  parscale = TRUE,
   ...
 )
 
@@ -103,6 +104,17 @@ the method of how the distances and therefore dependency structures are
 calculated. The default gives Euclidean distances in a \eqn{d}-dimensional
 space. Further editable arguments are \code{p, miles, R}, see respective
 help files of \link[stats]{dist} or \link[spam]{nearest.dist}.}
+
+\item{parscale}{(\code{logical(1)}) \cr
+Triggers parameter scaling within the optimization in \link[stats]{optim}.
+If \code{TRUE}, the optional parameter scaling in \code{optim.control} in
+function \code{\link{SVC_mle}} is overwritten by the initial value used in
+the numeric optimization. The initial value is either computed from the
+data or provided by the user, see \code{init} argument above or Details
+below. Note that we check whether the initial values are unequal to zero.
+If they are zero, the corresponding scaling factor is 0.001. If
+\code{FALSE}, the \code{parscale} argument in \code{optim.control} is let
+unchanged.}
 
 \item{object}{(\code{SVC_mle}) \cr
 The function then extracts the control settings from the function call

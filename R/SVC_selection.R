@@ -201,8 +201,8 @@ PMLE_CD <- function(
           abs(loglik.CD[k]) < CD.conv$delta) break
     } else {
       # on the parameters
-      if (sum(abs(c.par[k, ] - c.par[k+1, ]))/
-          sum(abs(c.par[k, ])) < CD.conv$delta) break
+      if (sum(abs(c(c.par[k, ], mu.par[k, ]) - c(c.par[k+1, ], mu.par[k+1, ])))/
+          sum(abs(c(c.par[k, ], mu.par[k, ]))) < CD.conv$delta) break
     }
   }
 

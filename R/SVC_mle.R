@@ -150,6 +150,13 @@ MLE_computation <- function(y, X, locs, W,
     ))
   }
 
+  # overwrite parameter scaling if required
+  if (control$parscale) {
+    optim.control$parscale <- abs(ifelse(
+      liu$init[id_obj] == 0, 0.001, liu$init[id_obj]
+    ))
+  }
+
 
   ## -- optimization -----
   if (is.null(control$parallel)) {
@@ -367,6 +374,16 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
 #'    calculated. The default gives Euclidean distances in a \eqn{d}-dimensional
 #'    space. Further editable arguments are \code{p, miles, R}, see respective
 #'    help files of \link[stats]{dist} or \link[spam]{nearest.dist}.
+#' @param parscale (\code{logical(1)}) \cr
+#'    Triggers parameter scaling within the optimization in \link[stats]{optim}.
+#'    If \code{TRUE}, the optional parameter scaling in \code{optim.control} in
+#'    function \code{\link{SVC_mle}} is overwritten by the initial value used in
+#'    the numeric optimization. The initial value is either computed from the
+#'    data or provided by the user, see \code{init} argument above or Details
+#'    below. Note that we check whether the initial values are unequal to zero.
+#'    If they are zero, the corresponding scaling factor is 0.001. If
+#'    \code{FALSE}, the \code{parscale} argument in \code{optim.control} is let
+#'    unchanged.
 #' @param ...     Further Arguments yet to be implemented
 #'
 #' @details If not provided, the initial values as well as the lower and upper
@@ -429,6 +446,7 @@ SVC_mle_control.default <- function(
   extract_fun = FALSE,
   hessian = TRUE,
   dist = list(method = "euclidean"),
+  parscale = TRUE,
   ...
 ) {
   stopifnot(
@@ -436,7 +454,8 @@ SVC_mle_control.default <- function(
     is.logical(save.fitted),
     is.logical(profileLik),
     is.logical(extract_fun),
-    is.logical(hessian)
+    is.logical(hessian),
+    is.logical(parscale)
   )
 
   # if (!is.null(tapering) &
@@ -458,6 +477,7 @@ SVC_mle_control.default <- function(
     extract_fun = extract_fun,
     hessian = hessian,
     dist = dist,
+    parscale = parscale,
     ...
   )
 }
