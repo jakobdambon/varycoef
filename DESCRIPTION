@@ -1,7 +1,7 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.2
+Version: 0.3.3
 Authors@R: 
     c(person(given = "Jakob A.",
              family = "Dambon",
@@ -34,9 +34,9 @@ Depends:
 Imports:
     glmnet,
     lhs,
+    methods,
     mlr,
     mlrMBO,
-    RandomFields,
     optimParallel (>= 0.8-1),
     ParamHelpers,
     pbapply, 
@@ -44,16 +44,9 @@ Imports:
 Suggests:
     DiceKriging,
     gstat,
-    knitr,
-    microbenchmark,
     parallel,
-    rmarkdown,
-    R.rsp,
     spData,
     sp
-VignetteBuilder: 
-    knitr,
-    R.rsp
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2

@@ -137,7 +137,7 @@ PMLE_CD <- function(
   ## dimensions
   n <- nrow(obj.fun$args$X)
   p <- ncol(obj.fun$args$X)
-  q <- length(obj.fun$arg$outer.W)
+  q <- length(obj.fun$args$outer.W)
 
   ## initialize output matrix
   # covariance parameters

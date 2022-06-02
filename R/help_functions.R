@@ -387,6 +387,8 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 #' @return A \code{list} with two \code{data.frame}. Each contains the estimated
 #' parameters with their standard errors of the fixed and random effects,
 #' respectively.
+#'
+#' @importFrom methods is
 prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
                             X, y, H, q) {
   p <- dim(as.matrix(X))[2]
@@ -414,7 +416,7 @@ prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
     se_all <- try({sqrt(diag(solve(H/2)))}, silent = TRUE)
 
     # if no convergence, standard errors cannot be extracted
-    if (class(se_all) == "try-error") {
+    if (methods::is(se_all, "try-error")) {
       warning("Could not invert Hessian.")
       se_all <- rep(NA, length(output_par))
     }
