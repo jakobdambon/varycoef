@@ -34,3 +34,28 @@
 #' }
 #' @source \url{http://www.spatial-econometrics.com/html/jplv6.zip}
 "house"
+
+
+#' Sampled SVC Data
+#'
+#' A list object that contains sampled data of 500 observations. The data has 
+#' been sampled using the `RandomFields` package. It is given in the list object 
+#' \code{SVCdata} which contains the following.
+#'
+#' @format A `list` with the following entries:
+#' \describe{
+#'   \item{y}{(\code{numeric}) Response}
+#'   \item{X}{(\code{numeric}) Covariates; first columns contains ones to model
+#'   an intercept, the second column contains standard-normal sampled data.}
+#'   \item{beta}{(\code{numeric}) The sampled Gaussian processes, which are
+#'   usually unobserved. It uses a Matern covariance function and the true 
+#'   parameters are given in the entry `true_pars`.}
+#'   \item{eps}{(\code{numeric}) Error (or Nugget effect), i.e., drawn from a 
+#'   zero-mean normal distribution with 0.5 standard deviation.}
+#'   \item{locs}{(\code{numeric}) Locations sampled from a uniform distribution
+#'   on the interval 0 to 10.}
+#'   \item{true_pars}{(\code{data.frame}) True parameters of the GP-based SVC 
+#'   model with Gaussian process mean, variance, and range. Additionally, the 
+#'   smoothness (nu) is given.}
+#' }
+"SVCdata"
