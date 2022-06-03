@@ -27,7 +27,7 @@ SVCdata
 }
 \description{
 A list object that contains sampled data of 500 observations. The data has 
-been sampled using the `RandomFields` package. It is given in the list object 
+been sampled using the \code{RandomFields} package. It is given in the list object 
 \code{SVCdata} which contains the following.
 }
 \keyword{datasets}
