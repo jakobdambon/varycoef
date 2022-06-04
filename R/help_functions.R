@@ -36,7 +36,7 @@
 #' R_mat <- chol(Sigma); str(R_mat)
 #' mu_mat <- GLS_chol(R_mat, X, y)
 #' ## using spam
-#' R_spam <- chol(as.spam(Sigma)); str(R_spam)
+#' R_spam <- chol(spam::as.spam(Sigma)); str(R_spam)
 #' mu_spam <- GLS_chol(R_spam, X, y)
 #' # should be identical to the following
 #' mu <- solve(crossprod(X, solve(Sigma, X))) %*%
@@ -47,6 +47,7 @@
 GLS_chol <- function(R, X, y) UseMethod("GLS_chol")
 
 #' @rdname GLS_chol
+#' @importFrom spam forwardsolve backsolve
 #' @export
 GLS_chol.spam.chol.NgPeyton <- function(R, X, y) {
   # (X^T * Sigma^-1 * X)^-1
@@ -410,7 +411,7 @@ prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
   # get standard errors of parameters
   if (is.null(H)) {
     warning("MLE without Hessian. Cannot return standard errors of covariance parameters.")
-    se_all <- rep(NA, length(output_par))
+    se_all <- rep(NA_real_, length(output_par))
   } else {
     # divide by 2 due to (-2)*LL
     se_all <- try({sqrt(diag(solve(H/2)))}, silent = TRUE)
@@ -418,7 +419,7 @@ prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
     # if no convergence, standard errors cannot be extracted
     if (methods::is(se_all, "try-error")) {
       warning("Could not invert Hessian.")
-      se_all <- rep(NA, length(output_par))
+      se_all <- rep(NA_real_, length(output_par))
     }
   }
   # on profile?

@@ -141,17 +141,17 @@ PMLE_CD <- function(
 
   ## initialize output matrix
   # covariance parameters
-  c.par <- matrix(NA, nrow = CD.conv$N + 1, ncol = 2*q+1)
+  c.par <- matrix(NA_real_, nrow = CD.conv$N + 1, ncol = 2*q+1)
   c.par[1, ] <- mle.par
   # mean parameter
-  mu.par <- matrix(NA, nrow = CD.conv$N + 1, ncol = p)
+  mu.par <- matrix(NA_real_, nrow = CD.conv$N + 1, ncol = p)
   I.C.mat <- solve(
     Sigma_y(mle.par, obj.fun$args$cov_func, obj.fun$args$outer.W)
   )
   B <- crossprod(obj.fun$args$X, I.C.mat)
   mu.par[1, ] <- solve(B %*% obj.fun$args$X) %*% B %*% obj.fun$args$y
   # log-likelihood
-  loglik.CD <- rep(NA, CD.conv$N + 1)
+  loglik.CD <- rep(NA_real_, CD.conv$N + 1)
 
   # update mean parameter for log-likelihood function
   obj.fun$args$mean.est <- mu.par[1, ]
