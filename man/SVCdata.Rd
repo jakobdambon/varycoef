@@ -27,7 +27,12 @@ SVCdata
 }
 \description{
 A list object that contains sampled data of 500 observations. The data has 
-been sampled using the \code{RandomFields} package. It is given in the list object 
-\code{SVCdata} which contains the following.
+been sampled using the \code{RandomFields} package (Schlather et al., 2015). 
+It is given in the list object \code{SVCdata} which contains the following.
+}
+\references{
+Schlather, M., Malinowski, A., Menck, P. J., Oesting, M., Strokorb, K. (2015) 
+  \emph{Analysis, simulation and prediction of multivariate random fields with package RandomFields},
+  Journal of Statistical Software, \doi{10.18637/jss.v063.i08}
 }
 \keyword{datasets}
