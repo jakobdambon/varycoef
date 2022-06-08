@@ -52,7 +52,7 @@
 #' SVCdata <- sample_SVCdata(
 #'   df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32"
 #' )
-#' @importFrom spam as.spam rmvnorm cov.exp cov.mat cov.sph cov.wend1 cov.wend2
+#' @importFrom spam rmvnorm cov.exp cov.mat cov.sph cov.wend1 cov.wend2
 #' @importFrom stats rnorm
 #' @export
 sample_SVCdata <- function(
@@ -110,7 +110,7 @@ sample_SVCdata <- function(
       spam::rmvnorm(
         n = 1,
         mu = rep(x["mean"], n), 
-        Sigma = spam::as.spam(cov_fun(theta = x[c("scale", "var")]))
+        Sigma = cov_fun(theta = x[c("scale", "var")])
       )
     }
   })

@@ -42,7 +42,7 @@
 #' been sampled using the \code{RandomFields} package (Schlather et al., 2015). 
 #' It is given in the list object \code{SVCdata} which contains the following.
 #'
-#' @format A `list` with the following entries:
+#' @format A \code{list} with the following entries:
 #' \describe{
 #'   \item{y}{(\code{numeric}) Response}
 #'   \item{X}{(\code{numeric}) Covariates; first columns contains ones to model

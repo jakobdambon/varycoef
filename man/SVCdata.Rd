@@ -5,7 +5,7 @@
 \alias{SVCdata}
 \title{Sampled SVC Data}
 \format{
-A `list` with the following entries:
+A \code{list} with the following entries:
 \describe{
   \item{y}{(\code{numeric}) Response}
   \item{X}{(\code{numeric}) Covariates; first columns contains ones to model
