@@ -2,9 +2,8 @@
 #' Sample Function for GP-based SVC Model for Given Locations
 #'
 #' @description Samples SVC data at given locations. The SVCs parameters and the
-#' covariance function have to be provided. The sampled model matrix contains an
-#' intercept as a first column and further covariates sampled from a standard
-#' normal. The SVCs are sampled according to their given parametrization and at
+#' covariance function have to be provided. The sampled model matrix can be 
+#' provided or it is sampled. The SVCs are sampled according to their given parametrization and at
 #' respective observation locations. The error vector is sampled from a nugget
 #' effect. Finally, the response vector is computed. Please note that the
 #' function is not optimized for sampling large data sets.
@@ -20,6 +19,12 @@
 #'    The numeric vector or matrix contains the observation locations and
 #'    therefore defines the number of observations to be \code{n}. For a vector,
 #'    we assume locations on the real line, i.e., \eqn{d=1}.
+#' @param X (\code{NULL} or \code{matrix(n, p)}) \cr
+#'    If \code{NULL}, the covariates are sampled, where the first column contains 
+#'    only ones to model an intercept and further columns are sampled from a 
+#'    standard normal. If it is provided as a \code{matrix}, then the dimensions
+#'    must match the number of locations in \code{locs} (\code{n}) and the number of SVCs
+#'    defined by the number of rows in \code{df.pars} (\code{p}).
 #'
 #' @return \code{list} \cr
 #'    Returns a list with the response \code{y}, model matrix
@@ -57,7 +62,8 @@
 #' @export
 sample_SVCdata <- function(
     df.pars, nugget.sd, locs,
-    cov.name = c("exp", "sph", "mat32", "mat52", "wend1", "wend2")
+    cov.name = c("exp", "sph", "mat32", "mat52", "wend1", "wend2"),
+    X = NULL
 ) {
   # transform to matrix for further computations
   if (is.vector(locs)) {
@@ -118,7 +124,15 @@ sample_SVCdata <- function(
   eps <- rnorm(n, sd = nugget.sd)
   
   # data
-  X <- cbind(1, matrix(rnorm(n*(p-1)), ncol = p-1))
+  if (is.null(X)) {
+    X <- cbind(1, matrix(rnorm(n*(p-1)), ncol = p-1))
+  } else {
+    stopifnot(
+      is.matrix(X),
+      dim(X)[1] == n,
+      dim(X)[2] == p
+    )
+  }
   y <- apply(beta*X, 1, sum) + eps
   
   list(

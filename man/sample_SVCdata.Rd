@@ -8,7 +8,8 @@ sample_SVCdata(
   df.pars,
   nugget.sd,
   locs,
-  cov.name = c("exp", "sph", "mat32", "mat52", "wend1", "wend2")
+  cov.name = c("exp", "sph", "mat32", "mat52", "wend1", "wend2"),
+  X = NULL
 )
 }
 \arguments{
@@ -26,6 +27,13 @@ we assume locations on the real line, i.e., \eqn{d=1}.}
 
 \item{cov.name}{(\code{character}(1)) \cr
 Character defining the covariance function, c.f. \code{\link{SVC_mle_control}}.}
+
+\item{X}{(\code{NULL} or \code{matrix(n, p)}) \cr
+If \code{NULL}, the covariates are sampled, where the first column contains 
+only ones to model an intercept and further columns are sampled from a 
+standard normal. If it is provided as a \code{matrix}, then the dimensions
+must match the number of locations in \code{locs} (\code{n}) and the number of SVCs
+defined by the number of rows in \code{df.pars} (\code{p}).}
 }
 \value{
 \code{list} \cr
@@ -40,9 +48,8 @@ Character defining the covariance function, c.f. \code{\link{SVC_mle_control}}.}
 }
 \description{
 Samples SVC data at given locations. The SVCs parameters and the
-covariance function have to be provided. The sampled model matrix contains an
-intercept as a first column and further covariates sampled from a standard
-normal. The SVCs are sampled according to their given parametrization and at
+covariance function have to be provided. The sampled model matrix can be 
+provided or it is sampled. The SVCs are sampled according to their given parametrization and at
 respective observation locations. The error vector is sampled from a nugget
 effect. Finally, the response vector is computed. Please note that the
 function is not optimized for sampling large data sets.

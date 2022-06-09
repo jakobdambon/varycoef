@@ -68,3 +68,36 @@ test_that("all possible four types of SVCs are possible", {
   # mean equal to 2
   expect_true(all(SVCdata$beta[, 4] == 0))
 })
+
+test_that("providing an X matrix works", {
+  n <- 10L
+  
+  set.seed(123)
+  # SVC parameters
+  df.pars <- data.frame(
+    var = c(2, 0, 1),
+    scale = c(3, 1, 1),
+    mean = c(1, 2, 0)
+  )
+  # nugget standard deviation
+  tau <- 0.5
+  
+  # sample locations
+  s <- sort(runif(n, min = 0, max = 10))
+
+  # construct some covariate matrices
+  X2 <- matrix(1:(3*(n+1)), nrow = n+1, ncol = 3)
+  X3 <- matrix(1:(4*n), nrow = n, ncol = 4)
+  X4 <- as.data.frame(matrix(1:(3*n), nrow = n, ncol = 3))
+  
+  
+  expect_error(sample_SVCdata(
+    df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32", X = X2
+  ))
+  expect_error(sample_SVCdata(
+    df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32", X = X3
+  ))
+  expect_error(sample_SVCdata(
+    df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32", X = X4
+  ))
+})
