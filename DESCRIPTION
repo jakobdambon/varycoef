@@ -1,7 +1,7 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.3
+Version: 0.3.4
 Authors@R: 
     c(person(given = "Jakob A.",
              family = "Dambon",
@@ -29,8 +29,7 @@ License: GPL-2
 URL: https://github.com/jakobdambon/varycoef
 BugReports: https://github.com/jakobdambon/varycoef/issues
 Depends:
-    R (>= 3.5.0),
-    spam
+    R (>= 3.5.0)
 Imports:
     glmnet,
     lhs,
@@ -40,13 +39,16 @@ Imports:
     optimParallel (>= 0.8-1),
     ParamHelpers,
     pbapply, 
-    smoof
+    smoof,
+    spam
 Suggests:
     DiceKriging,
     gstat,
     parallel,
     spData,
-    sp
+    sp,
+    testthat (>= 3.0.0)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
+Config/testthat/edition: 3

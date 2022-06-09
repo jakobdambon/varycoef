@@ -34,3 +34,31 @@
 #' }
 #' @source \url{http://www.spatial-econometrics.com/html/jplv6.zip}
 "house"
+
+
+#' Sampled SVC Data
+#'
+#' A list object that contains sampled data of 500 observations. The data has 
+#' been sampled using the \code{RandomFields} package (Schlather et al., 2015). 
+#' It is given in the list object \code{SVCdata} which contains the following.
+#'
+#' @format A \code{list} with the following entries:
+#' \describe{
+#'   \item{y}{(\code{numeric}) Response}
+#'   \item{X}{(\code{numeric}) Covariates; first columns contains ones to model
+#'   an intercept, the second column contains standard-normal sampled data.}
+#'   \item{beta}{(\code{numeric}) The sampled Gaussian processes, which are
+#'   usually unobserved. It uses a Matern covariance function and the true 
+#'   parameters are given in the entry `true_pars`.}
+#'   \item{eps}{(\code{numeric}) Error (or Nugget effect), i.e., drawn from a 
+#'   zero-mean normal distribution with 0.5 standard deviation.}
+#'   \item{locs}{(\code{numeric}) Locations sampled from a uniform distribution
+#'   on the interval 0 to 10.}
+#'   \item{true_pars}{(\code{data.frame}) True parameters of the GP-based SVC 
+#'   model with Gaussian process mean, variance, and range. Additionally, the 
+#'   smoothness (nu) is given.}
+#' }
+#' @references Schlather, M., Malinowski, A., Menck, P. J., Oesting, M., Strokorb, K. (2015) 
+#'   \emph{Analysis, simulation and prediction of multivariate random fields with package RandomFields},
+#'   Journal of Statistical Software, \doi{10.18637/jss.v063.i08}
+"SVCdata"

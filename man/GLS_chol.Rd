@@ -48,7 +48,7 @@ Sigma <- t(A) \%*\% A
 R_mat <- chol(Sigma); str(R_mat)
 mu_mat <- GLS_chol(R_mat, X, y)
 ## using spam
-R_spam <- chol(as.spam(Sigma)); str(R_spam)
+R_spam <- chol(spam::as.spam(Sigma)); str(R_spam)
 mu_spam <- GLS_chol(R_spam, X, y)
 # should be identical to the following
 mu <- solve(crossprod(X, solve(Sigma, X))) \%*\%

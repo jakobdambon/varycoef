@@ -1,5 +1,6 @@
 # holds objective functions to be optimized, i.e. negative log-likelihood of SVC-Models
 
+#' @importFrom spam chol.spam forwardsolve
 n2LL <- function(
   x, cov_func, outer.W, y, X, W,
   mean.est = NULL,
