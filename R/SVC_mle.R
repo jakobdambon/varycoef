@@ -30,9 +30,9 @@ MLE.cov.func <- function(cov.name) {
 #' @importFrom stats coef lm median var
 #' @importFrom optimParallel optimParallel
 #' @importFrom parallel clusterExport clusterEvalQ
-MLE_computation <- function(y, X, locs, W,
-                            control,
-                            optim.control) {
+MLE_computation <- function(
+    y, X, locs, W, control, optim.control
+  ) {
   ## -- set important dimensions ----
   # number random effects and fixed effects
   q <- dim(W)[2]
@@ -270,7 +270,10 @@ fitted_computation <- function(SVC_obj, y, X, W, locs) {
 }
 
 ## ---- help function to construct SVC_mle object ----
-create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
+create_SVC_mle <- function(
+    ML_estimate, y, X, W, locs, control,
+    formula = NULL, RE_formula = NULL
+  ) {
 
   q <- dim(W)[2]
 
@@ -291,7 +294,9 @@ create_SVC_mle <- function(ML_estimate, y, X, W, locs, control) {
       edof = ML_estimate$comp.args$edof),
     fitted = NULL,
     residuals = NULL,
-    data = list(y = y, X = X, W = W, locs = locs)
+    data = list(y = y, X = X, W = W, locs = locs),
+    formula = formula, 
+    RE_formula = RE_formula
   )
 
 
@@ -683,12 +688,14 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
   }
 
   # Start ML Estimation using optim
-  ML_estimate <- MLE_computation(y = y,
-                                 X = X,
-                                 locs = locs,
-                                 W = W,
-                                 control = control,
-                                 optim.control = optim.control)
+  ML_estimate <- MLE_computation(
+    y = y,
+    X = X,
+    locs = locs,
+    W = W,
+    control = control,
+    optim.control = optim.control
+  )
 
   if (is.function(ML_estimate$obj_fun)) {
     # extract objective function
@@ -697,7 +704,10 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
     return(object)
   } else {
     # after optimization
-    object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
+    object <- create_SVC_mle(
+      ML_estimate, y, X, W, locs, control,
+      formula = NULL, RE_formula = NULL
+    )
     object$call <- match.call()
     class(object) <- "SVC_mle"
     return(object)
@@ -707,28 +717,62 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
 
 # formula call
 
-#' @param formula Formula describing the fixed effects in SVC model. The response, i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.
+#' @param formula Formula describing the fixed effects in SVC model. The response, 
+#'   i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.
 #' @param data data frame containing the observations
-#' @param RE_formula Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.
+#' @param RE_formula Formula describing the random effects in SVC model. 
+#'   Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.
 #' @importFrom stats model.matrix
+#' 
+#' @examples
+#' ## ---- function call with formula ----
+#' set.seed(123)
+#' # SVC parameters
+#' df.pars <- data.frame(var = c(2, 1), scale = c(3, 1), mean = c(1, 2))
+#' # nugget standard deviation
+#' tau <- 0.5
 #'
+#' # sample locations
+#' s <- sort(runif(100, min = 0, max = 10))
+#' SVCdata <- sample_SVCdata(
+#'   df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32"
+#' )
+#' # only take second column of X as the first column only models intercept
+#' df <- data.frame(y = SVCdata$y, X = SVCdata$X[, -1])
+#' fit <- SVC_mle(
+#'   y~., data = df, locs = SVCdata$locs, 
+#'   control = SVC_mle_control(init = rep(1, 5), profileLik = TRUE)
+#'  )
 #' @rdname SVC_mle
 #' @export
 SVC_mle.formula <- function(formula, data, RE_formula = NULL,
                             locs, control, optim.control = list(), ...) {
-
-
-  X <- as.matrix(model.matrix(formula, data = data))
+  # extract model matrix
+  X <- as.matrix(stats::model.matrix(formula, data = data))
   W <- if (is.null(RE_formula)) {X} else {
-    as.matrix(model.matrix(RE_formula, data = data))
+    as.matrix(stats::model.matrix(RE_formula, data = data))
   }
   y <- as.numeric(data[, all.vars(formula)[1]])
 
-  SVC_mle.default(y = y,
-                  X = X,
-                  locs = locs,
-                  W = W,
-                  control = control,
-                  optim.control = optim.control)
+  # call SVC_mle with default control settings if non are provided
+  if (is.null(control)) {
+    control <- SVC_mle_control()
+  }
+  
+  # Start ML Estimation using optim
+  ML_estimate <- MLE_computation(
+    y = y,
+    X = X,
+    locs = locs,
+    W = W,
+    control = control,
+    optim.control = optim.control
+  )
+  
+  # after optimization
+  object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
+  object$call <- match.call()
+  class(object) <- "SVC_mle"
+  return(object)
 }
 

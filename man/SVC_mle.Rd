@@ -46,11 +46,13 @@ Control paramaters given by \code{\link{SVC_mle_control}}.}
 Control arguments for optimization function, see Details in
 \code{\link{optim}}.}
 
-\item{formula}{Formula describing the fixed effects in SVC model. The response, i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
+\item{formula}{Formula describing the fixed effects in SVC model. The response, 
+i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
 
 \item{data}{data frame containing the observations}
 
-\item{RE_formula}{Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
+\item{RE_formula}{Formula describing the random effects in SVC model. 
+Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
 }
 \value{
 Object of class \code{SVC_mle} if \code{control$extract_fun = FALSE},
@@ -184,6 +186,24 @@ sp.SVC <- SVC
 coordinates(sp.SVC) <- ~loc_1+loc_2
 spplot(sp.SVC, colorkey = TRUE)
 }
+## ---- function call with formula ----
+set.seed(123)
+# SVC parameters
+df.pars <- data.frame(var = c(2, 1), scale = c(3, 1), mean = c(1, 2))
+# nugget standard deviation
+tau <- 0.5
+
+# sample locations
+s <- sort(runif(100, min = 0, max = 10))
+SVCdata <- sample_SVCdata(
+  df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32"
+)
+# only take second column of X as the first column only models intercept
+df <- data.frame(y = SVCdata$y, X = SVCdata$X[, -1])
+fit <- SVC_mle(
+  y~., data = df, locs = SVCdata$locs, 
+  control = SVC_mle_control(init = rep(1, 5), profileLik = TRUE)
+ )
 }
 \references{
 Dambon, J. A., Sigrist, F., Furrer, R. (2021)
