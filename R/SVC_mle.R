@@ -568,61 +568,26 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #'
 #' @examples
 #' ## ---- toy example ----
-#' ## sample data
-#' # setting seed for reproducibility
+#' ## We use the sampled, i.e., onde dimensional SVCs
+#' data(SVCdata)
+#' # sub-sample data to have feasible run time for example
 #' set.seed(123)
-#' m <- 7
-#' # number of observations
-#' n <- m*m
-#' # number of SVC
-#' p <- 3
-#' # sample data
-#' y <- rnorm(n)
-#' X <- matrix(rnorm(n*p), ncol = p)
-#' # locations on a regular m-by-m-grid
-#' locs <- expand.grid(seq(0, 1, length.out = m),
-#'                     seq(0, 1, length.out = m))
-#'
-#' ## preparing for maximum likelihood estimation (MLE)
-#' # controls specific to MLE
-#' control <- SVC_mle_control(
-#'   # initial values of optimization
-#'   init = rep(0.1, 2*p+1),
-#'   # lower bound
-#'   lower = rep(1e-6, 2*p+1),
-#'   # using profile likelihood
-#'   profileLik = TRUE
+#' id <- sample(length(SVCdata$locs), 50)
+#' 
+#' ## SVC_mle call with matrix arguments
+#' fit <- with(SVCdata, SVC_mle(
+#'   y[id], X[id, ], locs[id], 
+#'   control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")))
+#' 
+#' ## SVC_mle call with formula
+#' df <- with(SVCdata, data.frame(y = y[id], X = X[id, -1]))
+#' fit <- SVC_mle(
+#'   y ~ X, data = df, locs = SVCdata$locs[id], 
+#'   control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")
 #' )
-#'
-#' # controls specific to optimization procedure, see help(optim)
-#' opt.control <- list(
-#'   # number of iterations (set to one for demonstration sake)
-#'   maxit = 1,
-#'   # tracing information
-#'   trace = 6
-#' )
-#'
-#' ## starting MLE
-#' fit <- SVC_mle(y = y, X = X, locs = locs,
-#'                control = control,
-#'                optim.control = opt.control)
 #' class(fit)
 #'
-#' ## output: convergence code equal to 1, since maxit was only 1
 #' summary(fit)
-#'
-#' ## extract the optimization arguments, including objective function
-#' control$extract_fun <- TRUE
-#' opt <- SVC_mle(y = y, X = X, locs = locs,
-#'                control = control)
-#'
-#' # objective function and its arguments of optimization
-#' class(opt$obj_fun)
-#' class(opt$args)
-#'
-#' # single evaluation with initial value
-#' do.call(opt$obj_fun,
-#'         c(list(x = control$init), opt$args))
 #'
 #' \donttest{
 #' ## ---- real data example ----
@@ -724,25 +689,6 @@ SVC_mle.default <- function(y, X, locs, W = NULL,
 #'   Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.
 #' @importFrom stats model.matrix
 #' 
-#' @examples
-#' ## ---- function call with formula ----
-#' set.seed(123)
-#' # SVC parameters
-#' df.pars <- data.frame(var = c(2, 1), scale = c(3, 1), mean = c(1, 2))
-#' # nugget standard deviation
-#' tau <- 0.5
-#'
-#' # sample locations
-#' s <- sort(runif(100, min = 0, max = 10))
-#' SVCdata <- sample_SVCdata(
-#'   df.pars = df.pars, nugget.sd = tau, locs = s, cov.name = "mat32"
-#' )
-#' # only take second column of X as the first column only models intercept
-#' df <- data.frame(y = SVCdata$y, X = SVCdata$X[, -1])
-#' fit <- SVC_mle(
-#'   y~., data = df, locs = SVCdata$locs, 
-#'   control = SVC_mle_control(init = rep(1, 5), profileLik = TRUE)
-#'  )
 #' @rdname SVC_mle
 #' @export
 SVC_mle.formula <- function(formula, data, RE_formula = NULL,
