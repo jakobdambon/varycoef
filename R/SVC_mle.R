@@ -695,8 +695,11 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
                             locs, control, optim.control = list(), ...) {
   # extract model matrix
   X <- as.matrix(stats::model.matrix(formula, data = data))
-  W <- if (is.null(RE_formula)) {X} else {
-    as.matrix(stats::model.matrix(RE_formula, data = data))
+  if (is.null(RE_formula)) {
+    W <- X
+    RE_formula <- formula
+  } else {
+    W <- as.matrix(stats::model.matrix(RE_formula, data = data))
   }
   y <- as.numeric(data[, all.vars(formula)[1]])
 
@@ -716,7 +719,10 @@ SVC_mle.formula <- function(formula, data, RE_formula = NULL,
   )
   
   # after optimization
-  object <- create_SVC_mle(ML_estimate, y, X, W, locs, control)
+  object <- create_SVC_mle(
+    ML_estimate, y, X, W, locs, control,
+    formula = formula, RE_formula = RE_formula
+  )
   object$call <- match.call()
   class(object) <- "SVC_mle"
   return(object)

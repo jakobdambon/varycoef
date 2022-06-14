@@ -9,6 +9,7 @@
   newlocs = NULL,
   newX = NULL,
   newW = NULL,
+  newdata = NULL,
   compute.y.var = FALSE,
   ...
 )
@@ -28,6 +29,10 @@ predicted response variable.}
 \item{newW}{(\code{NULL} or \code{matrix(n.new, p)}) \cr
 If provided (together with \code{newX}), the function also returns the
 predicted response variable.}
+
+\item{newdata}{(\code{NULL} or \code{data.frame(n.new, p)}) \cr
+This argument can be used, when the \code{SVC_mle} function has been called
+with an formula, see examples.}
 
 \item{compute.y.var}{(\code{logical(1)}) \cr
 If \code{TRUE} and the response is being estimated, the predictive

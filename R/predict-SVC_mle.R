@@ -13,6 +13,9 @@
 #' @param newW  (\code{NULL} or \code{matrix(n.new, p)}) \cr
 #'    If provided (together with \code{newX}), the function also returns the
 #'    predicted response variable.
+#' @param newdata (\code{NULL} or \code{data.frame(n.new, p)}) \cr
+#'    This argument can be used, when the \code{SVC_mle} function has been called
+#'    with an formula, see examples.
 #' @param compute.y.var  (\code{logical(1)}) \cr
 #'    If \code{TRUE} and the response is being estimated, the predictive
 #'    variance of each estimate will be computed.
@@ -100,17 +103,18 @@
 #'         compute.y.var = TRUE)
 #'
 #' @import spam
-#' @importFrom stats sd
+#' @importFrom stats sd model.matrix
 #' @export
 predict.SVC_mle <- function(
   object,
   newlocs = NULL,
   newX = NULL,
   newW = NULL,
+  newdata = NULL,
   compute.y.var = FALSE,
   ...
 ) {
-
+  # extract parameters
   mu <- coef(object)
   cov.par <- cov_par(object)
 
@@ -181,6 +185,28 @@ predict.SVC_mle <- function(
     solve(cov_y, object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
   eff <- matrix(eff, ncol = q)
 
+  # if newdata is given and formula is present in SVC_mle object, extract
+  # newX and newW (and overwrite provided ones)
+  if (!is.null(newdata)) {
+    if (!is.null(object$formula)) {
+      if (!is.null(newX) & !is.null(newW)) {
+        warning("Formula and newdata provided: newX and newW were overwritten!")
+      }
+      if (!is.null(newX)) {
+        warning("Formula and newdata provided: newX was overwritten!")
+      }
+      if (!is.null(newW)) {
+        warning("Formula and newdata provided: newW was overwritten!")
+      }
+      # create covariates
+      newX <- as.matrix(stats::model.matrix(formula, data = newdata))
+      newW <- as.matrix(stats::model.matrix(RE_formula, data = newdata))
+    } else {
+      warning("Data provided bu object has not been trained by a formula.\n
+              Cannot compute fixed and random effect covariates.")
+    }
+  }
+  
 
   if (!is.null(newX) & !is.null(newW)) {
     # Do dimensions for training and prediction data match?
