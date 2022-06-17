@@ -520,3 +520,18 @@ get_taper <- function(cov.name, d, tapering) {
     "mat52" = spam::cov.wend2(d, c(tapering, 1, 0))
   )
 }
+
+is.formula <- function(x){
+  inherits(x,"formula")
+}
+
+drop_response <- function(formula) {
+  stopifnot(is.formula(formula))
+  
+  deparsed_form <- as.character(formula)
+  if (length(deparsed_form) > 2L) {
+    return(as.formula(paste(deparsed_form[c(1, 3)], collapse = " ")))
+  } else {
+    return(formula)  
+  }
+}

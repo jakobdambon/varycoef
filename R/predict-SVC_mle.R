@@ -189,16 +189,17 @@ predict.SVC_mle <- function(
   # newX and newW (and overwrite provided ones)
   if (!is.null(newdata)) {
     if (!is.null(object$formula)) {
-      if (!is.null(newX) & !is.null(newW)) {
-        warning("Formula and newdata provided: newX and newW were overwritten!")
-      }
       if (!is.null(newX)) {
-        warning("Formula and newdata provided: newX was overwritten!")
+        warning("Formula and newdata provided: newX argument was overwritten!")
       }
       if (!is.null(newW)) {
-        warning("Formula and newdata provided: newW was overwritten!")
+        warning("Formula and newdata provided: newW argument was overwritten!")
       }
       # create covariates
+      # drop response from fromula
+      formula <- drop_response(object$formula)
+      RE_formula <- drop_response(object$RE_formula)
+      
       newX <- as.matrix(stats::model.matrix(formula, data = newdata))
       newW <- as.matrix(stats::model.matrix(RE_formula, data = newdata))
     } else {
@@ -289,9 +290,8 @@ predict.SVC_mle <- function(
     out <- as.data.frame(cbind(eff, newlocs))
     colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), paste0("loc_", 1:ncol(newlocs)))
   }
-
-
-
+  # two ensure that predict calls with formula and matrix are identical
+  row.names(out) <- as.character(row.names(out))
   return(out)
 }
 
