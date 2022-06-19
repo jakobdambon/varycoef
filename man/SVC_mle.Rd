@@ -89,7 +89,7 @@ The MLE is an numeric optimization that runs \code{\link[stats]{optim}} or
 }
 \examples{
 ## ---- toy example ----
-## We use the sampled, i.e., onde dimensional SVCs
+## We use the sampled, i.e., one dimensional SVCs
 data(SVCdata)
 # sub-sample data to have feasible run time for example
 set.seed(123)

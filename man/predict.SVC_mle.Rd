@@ -56,66 +56,33 @@ Prediction of SVCs (and response variable)
 }
 \examples{
 ## ---- toy example ----
-## sample data
-# setting seed for reproducibility
+## We use the sampled, i.e., one dimensional SVCs
+data(SVCdata)
+# sub-sample data to have feasible run time for example
 set.seed(123)
-m <- 7
-# number of observations
-n <- m*m
-# number of SVC
-p <- 3
-# sample data
-y <- rnorm(n)
-X <- matrix(rnorm(n*p), ncol = p)
-# locations on a regular m-by-m-grid
-locs <- expand.grid(seq(0, 1, length.out = m),
-                    seq(0, 1, length.out = m))
+id <- sample(length(SVCdata$locs), 50)
 
-## preparing for maximum likelihood estimation (MLE)
-# controls specific to MLE
-control <- SVC_mle_control(
-  # initial values of optimization
-  init = rep(0.1, 2*p+1),
-  # lower bound
-  lower = rep(1e-6, 2*p+1),
-  # using profile likelihood
-  profileLik = TRUE
+## SVC_mle call with matrix arguments
+fit_mat <- with(SVCdata, SVC_mle(
+  y[id], X[id, ], locs[id], 
+  control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")))
+
+## SVC_mle call with formula
+df <- with(SVCdata, data.frame(y = y[id], X = X[id, -1]))
+fit_form <- SVC_mle(
+  y ~ X, data = df, locs = SVCdata$locs[id], 
+  control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")
 )
-
-# controls specific to optimization procedure, see help(optim)
-opt.control <- list(
-  # number of iterations (set to one for demonstration sake)
-  maxit = 1,
-  # tracing information
-  trace = 6
-)
-
-## starting MLE
-fit <- SVC_mle(y = y, X = X, locs = locs,
-               control = control,
-               optim.control = opt.control)
-
-## output: convergence code equal to 1, since maxit was only 1
-summary(fit)
 
 ## prediction
-# new location
-newlocs <- matrix(0.5, ncol = 2, nrow = 2)
-
-# new data
-X.new <- matrix(rnorm(2*p), ncol = p)
 
 # predicting SVCs
-predict(fit, newlocs = newlocs)
+predict(fit_mat, newlocs = 1:2)
+predict(fit_form, newlocs = 1:2)
 
-# predicting SVCs and calculating response
-predict(fit, newlocs = newlocs,
-        newX = X.new, newW = X.new)
-
-# predicting SVCs, calculating response and predictive variance
-predict(fit, newlocs = newlocs,
-        newX = X.new, newW = X.new,
-        compute.y.var = TRUE)
+# predicting SVCs and response providing new covariates
+predict(fit_mat, newX = matrix(c(1, 1, 3, 4), ncol = 2), newlocs = 1:2)
+predict(fit_form, newdata = data.frame(X = 3:4), newlocs = 1:2)
 
 }
 \references{
