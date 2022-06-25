@@ -46,11 +46,13 @@ Control paramaters given by \code{\link{SVC_mle_control}}.}
 Control arguments for optimization function, see Details in
 \code{\link{optim}}.}
 
-\item{formula}{Formula describing the fixed effects in SVC model. The response, i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
+\item{formula}{Formula describing the fixed effects in SVC model. The response, 
+i.e. LHS of the formula, is not allowed to have functions such as \code{sqrt()} or \code{log()}.}
 
 \item{data}{data frame containing the observations}
 
-\item{RE_formula}{Formula describing the random effects in SVC model. Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
+\item{RE_formula}{Formula describing the random effects in SVC model. 
+Only RHS is considered. If \code{NULL}, the same RHS of argument \code{formula} for fixed effects is used.}
 }
 \value{
 Object of class \code{SVC_mle} if \code{control$extract_fun = FALSE},
@@ -87,61 +89,26 @@ The MLE is an numeric optimization that runs \code{\link[stats]{optim}} or
 }
 \examples{
 ## ---- toy example ----
-## sample data
-# setting seed for reproducibility
+## We use the sampled, i.e., one dimensional SVCs
+data(SVCdata)
+# sub-sample data to have feasible run time for example
 set.seed(123)
-m <- 7
-# number of observations
-n <- m*m
-# number of SVC
-p <- 3
-# sample data
-y <- rnorm(n)
-X <- matrix(rnorm(n*p), ncol = p)
-# locations on a regular m-by-m-grid
-locs <- expand.grid(seq(0, 1, length.out = m),
-                    seq(0, 1, length.out = m))
+id <- sample(length(SVCdata$locs), 50)
 
-## preparing for maximum likelihood estimation (MLE)
-# controls specific to MLE
-control <- SVC_mle_control(
-  # initial values of optimization
-  init = rep(0.1, 2*p+1),
-  # lower bound
-  lower = rep(1e-6, 2*p+1),
-  # using profile likelihood
-  profileLik = TRUE
+## SVC_mle call with matrix arguments
+fit <- with(SVCdata, SVC_mle(
+  y[id], X[id, ], locs[id], 
+  control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")))
+
+## SVC_mle call with formula
+df <- with(SVCdata, data.frame(y = y[id], X = X[id, -1]))
+fit <- SVC_mle(
+  y ~ X, data = df, locs = SVCdata$locs[id], 
+  control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")
 )
-
-# controls specific to optimization procedure, see help(optim)
-opt.control <- list(
-  # number of iterations (set to one for demonstration sake)
-  maxit = 1,
-  # tracing information
-  trace = 6
-)
-
-## starting MLE
-fit <- SVC_mle(y = y, X = X, locs = locs,
-               control = control,
-               optim.control = opt.control)
 class(fit)
 
-## output: convergence code equal to 1, since maxit was only 1
 summary(fit)
-
-## extract the optimization arguments, including objective function
-control$extract_fun <- TRUE
-opt <- SVC_mle(y = y, X = X, locs = locs,
-               control = control)
-
-# objective function and its arguments of optimization
-class(opt$obj_fun)
-class(opt$args)
-
-# single evaluation with initial value
-do.call(opt$obj_fun,
-        c(list(x = control$init), opt$args))
 
 \donttest{
 ## ---- real data example ----

@@ -13,6 +13,9 @@
 #' @param newW  (\code{NULL} or \code{matrix(n.new, p)}) \cr
 #'    If provided (together with \code{newX}), the function also returns the
 #'    predicted response variable.
+#' @param newdata (\code{NULL} or \code{data.frame(n.new, p)}) \cr
+#'    This argument can be used, when the \code{SVC_mle} function has been called
+#'    with an formula, see examples.
 #' @param compute.y.var  (\code{logical(1)}) \cr
 #'    If \code{TRUE} and the response is being estimated, the predictive
 #'    variance of each estimate will be computed.
@@ -38,79 +41,47 @@
 #'
 #' @examples
 #' ## ---- toy example ----
-#' ## sample data
-#' # setting seed for reproducibility
+#' ## We use the sampled, i.e., one dimensional SVCs
+#' data(SVCdata)
+#' # sub-sample data to have feasible run time for example
 #' set.seed(123)
-#' m <- 7
-#' # number of observations
-#' n <- m*m
-#' # number of SVC
-#' p <- 3
-#' # sample data
-#' y <- rnorm(n)
-#' X <- matrix(rnorm(n*p), ncol = p)
-#' # locations on a regular m-by-m-grid
-#' locs <- expand.grid(seq(0, 1, length.out = m),
-#'                     seq(0, 1, length.out = m))
-#'
-#' ## preparing for maximum likelihood estimation (MLE)
-#' # controls specific to MLE
-#' control <- SVC_mle_control(
-#'   # initial values of optimization
-#'   init = rep(0.1, 2*p+1),
-#'   # lower bound
-#'   lower = rep(1e-6, 2*p+1),
-#'   # using profile likelihood
-#'   profileLik = TRUE
+#' id <- sample(length(SVCdata$locs), 50)
+#' 
+#' ## SVC_mle call with matrix arguments
+#' fit_mat <- with(SVCdata, SVC_mle(
+#'   y[id], X[id, ], locs[id], 
+#'   control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")))
+#' 
+#' ## SVC_mle call with formula
+#' df <- with(SVCdata, data.frame(y = y[id], X = X[id, -1]))
+#' fit_form <- SVC_mle(
+#'   y ~ X, data = df, locs = SVCdata$locs[id], 
+#'   control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")
 #' )
-#'
-#' # controls specific to optimization procedure, see help(optim)
-#' opt.control <- list(
-#'   # number of iterations (set to one for demonstration sake)
-#'   maxit = 1,
-#'   # tracing information
-#'   trace = 6
-#' )
-#'
-#' ## starting MLE
-#' fit <- SVC_mle(y = y, X = X, locs = locs,
-#'                control = control,
-#'                optim.control = opt.control)
-#'
-#' ## output: convergence code equal to 1, since maxit was only 1
-#' summary(fit)
 #'
 #' ## prediction
-#' # new location
-#' newlocs <- matrix(0.5, ncol = 2, nrow = 2)
-#'
-#' # new data
-#' X.new <- matrix(rnorm(2*p), ncol = p)
-#'
+#' 
 #' # predicting SVCs
-#' predict(fit, newlocs = newlocs)
-#'
-#' # predicting SVCs and calculating response
-#' predict(fit, newlocs = newlocs,
-#'         newX = X.new, newW = X.new)
-#'
-#' # predicting SVCs, calculating response and predictive variance
-#' predict(fit, newlocs = newlocs,
-#'         newX = X.new, newW = X.new,
-#'         compute.y.var = TRUE)
-#'
+#' predict(fit_mat, newlocs = 1:2)
+#' predict(fit_form, newlocs = 1:2)
+#' 
+#' # predicting SVCs and response providing new covariates
+#' predict(fit_mat, newX = matrix(c(1, 1, 3, 4), ncol = 2), newlocs = 1:2)
+#' predict(fit_form, newdata = data.frame(X = 3:4), newlocs = 1:2)
+#' 
 #' @import spam
-#' @importFrom stats sd
+#' @importFrom stats sd model.matrix
 #' @export
 predict.SVC_mle <- function(
   object,
   newlocs = NULL,
   newX = NULL,
   newW = NULL,
+  newdata = NULL,
   compute.y.var = FALSE,
   ...
 ) {
-
+  # extract parameters
   mu <- coef(object)
   cov.par <- cov_par(object)
 
@@ -181,6 +152,29 @@ predict.SVC_mle <- function(
     solve(cov_y, object$MLE$call.args$y - object$MLE$call.args$X %*% mu)
   eff <- matrix(eff, ncol = q)
 
+  # if newdata is given and formula is present in SVC_mle object, extract
+  # newX and newW (and overwrite provided ones)
+  if (!is.null(newdata)) {
+    if (!is.null(object$formula)) {
+      if (!is.null(newX)) {
+        warning("Formula and newdata provided: newX argument was overwritten!")
+      }
+      if (!is.null(newW)) {
+        warning("Formula and newdata provided: newW argument was overwritten!")
+      }
+      # create covariates
+      # drop response from fromula
+      formula <- drop_response(object$formula)
+      RE_formula <- drop_response(object$RE_formula)
+      
+      newX <- as.matrix(stats::model.matrix(formula, data = newdata))
+      newW <- as.matrix(stats::model.matrix(RE_formula, data = newdata))
+    } else {
+      warning("Data provided bu object has not been trained by a formula.\n
+              Cannot compute fixed and random effect covariates.")
+    }
+  }
+  
 
   if (!is.null(newX) & !is.null(newW)) {
     # Do dimensions for training and prediction data match?
@@ -263,9 +257,8 @@ predict.SVC_mle <- function(
     out <- as.data.frame(cbind(eff, newlocs))
     colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), paste0("loc_", 1:ncol(newlocs)))
   }
-
-
-
+  # two ensure that predict calls with formula and matrix are identical
+  row.names(out) <- as.character(row.names(out))
   return(out)
 }
 
