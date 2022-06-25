@@ -1,3 +1,33 @@
+#' @importFrom spam cov.mat
+cov.mat32 <- function(h, theta) {
+  stopifnot(length(theta) == 2L)
+  # smoothness nu = 3/2
+  spam::cov.mat(h, theta = c(theta, 3/2))
+}
+
+#' @importFrom spam cov.mat
+cov.mat52 <- function(h, theta) {
+  stopifnot(length(theta) == 2L)
+  # smoothness nu = 5/2
+  spam::cov.mat(h, theta = c(theta, 5/2))
+}
+
+
+## ---- help function to give back correct covariance function ----
+#' @importFrom spam cov.exp cov.sph cov.wend1 cov.wend2
+MLE.cov.func <- function(
+    cov.name = c("exp", "mat32", "mat52", "sph", "wend1", "wend2")
+  ) {
+  if (is.character(cov.name)) {
+    cov.func <- get(paste0("cov.", match.arg(cov.name)))
+  } else if (is.function(cov.name)) {
+    cov.func <- cov.name
+  } else {
+    stop("Cov.name argument neither character, nor covariance function.")
+  }
+  return(cov.func)
+}
+
 
 
 #' GLS Estimate using Cholesky Factor

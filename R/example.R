@@ -86,27 +86,13 @@ sample_SVCdata <- function(
   D <- as.matrix(dist(locs, diag = TRUE, upper = TRUE))
   
   ## covariance functions
-  cov_fun <- switch(
-    match.arg(cov.name),
-    "exp" = function(theta) {
-      spam::cov.exp(D, theta = theta)
-    },
-    "sph" = function(theta) {
-      spam::cov.sph(D, theta = theta)
-    },
-    "mat32" = function(theta) {
-      spam::cov.mat(D, theta = c(theta, 3/2))
-    },
-    "mat52" = function(theta) {
-      spam::cov.mat(D, theta = c(theta, 5/2))
-    },
-    "wend1" = function(theta) {
-      spam::cov.wend1(D, theta = theta)
-    },
-    "wend2" = function(theta) {
-      spam::cov.wend2(D, theta = theta)
-    }
-  )
+  cov_fun <- function(theta) {
+    do.call(
+      what = MLE.cov.func(cov.name),
+      args = list(h = D, theta = theta)
+    )
+  }
+    
   
   ## sample SVCs (including mean effect)
   beta <- apply(df.pars, 1, function(x) {

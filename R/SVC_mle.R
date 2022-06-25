@@ -5,27 +5,6 @@
 
 
 
-## ---- help function to give back correct covariance function ----
-MLE.cov.func <- function(cov.name) {
-  if (is.character(cov.name)) {
-    cov.func <- switch(cov.name,
-           "exp" = spam::cov.exp,
-           "mat32" = function(h, theta) {
-             spam::cov.mat(h, theta = c(theta, 3/2))},
-           "mat52" = function(h, theta) {
-             spam::cov.mat(h, theta = c(theta, 5/2))},
-           "sph" = spam::cov.sph,
-           "wend1" = spam::cov.wend1,
-           "wend2" = spam::cov.wend2,
-           stop("Cov.name argument not defined."))
-  } else if (is.function(cov.name)) {
-    cov.func <- cov.name
-  } else {
-    stop("Cov.name argument neither character, nor covariance function.")
-  }
-  return(cov.func)
-}
-
 ## ---- help function to do MLE for SVC model ----
 #' @importFrom stats coef lm median var
 #' @importFrom optimParallel optimParallel
