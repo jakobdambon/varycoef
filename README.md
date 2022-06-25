@@ -1,4 +1,4 @@
-# varycoef
+# `varycoef`: An R package to Model Spatially Varying Coefficients using Gaussian Processes
 
 ## About
 
