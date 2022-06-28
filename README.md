@@ -1,5 +1,7 @@
 # `varycoef`: An R package to Model Spatially Varying Coefficients using Gaussian Processes
 
+[![CRAN](http://www.r-pkg.org/badges/version/varycoef?color=blue)](http://cran.rstudio.com/package=varycoef) [![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](http://www.r-pkg.org/pkg/gglasso)
+
 ## About
 
 The R package `varycoef` is the software implementation of **Gaussian process-based spatially varying coefficient models** by [Dambon et al. (2021a)](https://www.sciencedirect.com/science/article/pii/S2211675320300646). It extends linear regression models such that the coefficients are depending on some coordinates in a `d` dimensional space, i.e., the coefficient `b_j` for a covariate `j` is depending on coordinates `s` and therefore of the form `b_j(s)`. These coefficients are modeled using Gaussian processes. In most applications, the coordinates `s` tend to be observation locations like longitude and latitude (see [Dambon et al. (2022)](https://sjes.springeropen.com/articles/10.1186/s41937-021-00080-2) as an example). However, the concept can be extended in the number of dimensions or, say, using observation time points to model time-varying coefficients.
