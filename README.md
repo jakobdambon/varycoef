@@ -1,6 +1,6 @@
 # `varycoef`: An R Package to Model Spatially Varying Coefficients using Gaussian Processes
 
-[![CRAN](http://www.r-pkg.org/badges/version/varycoef?color=blue)](http://cran.rstudio.com/package=varycoef) [![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](http://www.r-pkg.org/pkg/gglasso)
+[![R-CMD-check](https://github.com/jakobdambon/varycoef/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jakobdambon/varycoef/actions/workflows/R-CMD-check.yaml) [![CRAN status](https://www.r-pkg.org/badges/version/varycoef)](https://CRAN.R-project.org/package=varycoef) [![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](http://www.r-pkg.org/pkg/gglasso)
 
 ## About
 
