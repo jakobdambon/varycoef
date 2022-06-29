@@ -1,3 +1,33 @@
+#' @importFrom spam cov.mat
+cov.mat32 <- function(h, theta) {
+  stopifnot(length(theta) == 2L)
+  # smoothness nu = 3/2
+  spam::cov.mat(h, theta = c(theta, 3/2))
+}
+
+#' @importFrom spam cov.mat
+cov.mat52 <- function(h, theta) {
+  stopifnot(length(theta) == 2L)
+  # smoothness nu = 5/2
+  spam::cov.mat(h, theta = c(theta, 5/2))
+}
+
+
+## ---- help function to give back correct covariance function ----
+#' @importFrom spam cov.exp cov.sph cov.wend1 cov.wend2
+MLE.cov.func <- function(
+    cov.name = c("exp", "mat32", "mat52", "sph", "wend1", "wend2")
+  ) {
+  if (is.character(cov.name)) {
+    cov.func <- get(paste0("cov.", match.arg(cov.name)))
+  } else if (is.function(cov.name)) {
+    cov.func <- cov.name
+  } else {
+    stop("Cov.name argument neither character, nor covariance function.")
+  }
+  return(cov.func)
+}
+
 
 
 #' GLS Estimate using Cholesky Factor
@@ -71,73 +101,73 @@ GLS_chol.matrix <- function(R, X, y) {
 }
 
 
-#' Covariance Matrix of GP-based SVC Model
-#'
-#' Builds the covariance matrix of \eqn{y} (p. 6, Dambon et al. (2021)
-#'\doi{10.1016/j.spasta.2020.100470}) for a given set of covariance
-#' parameters and other, pre-defined objects (like the outer-products,
-#' covariance function, and, possibly, a taper matrix).
-#'
-#' @param x         (\code{numeric(2q+1)}) \cr Non negative vector containing
-#' the covariance parameters in the following order: \eqn{\rho_1, \sigma_1^2,
-#' ..., \rho_q, \sigma_q^2 , \tau^2}. Note that the odd entries, i.e., the
-#' ranges and the nugget variance, have to be greater than 0, otherwise the
-#' covariance matrix is not well-defined (singularities or not-invertible).
-#' @param cov_func  (\code{function}) \cr A covariance function that works on
-#' the pre-defined distance matrix \code{d}. It takes a numeric vector as an
-#' input, the first entry being the range, the second being the variance
-#' (also called partial sill). Usually, it is defined as, e.g.:
-#' \code{function(pars) spam::cov.exp(d, pars)} or any other covariance function
-#' defined for two parameters.
-#' @param outer.W   (\code{list(q)}) \cr A list of length \code{q} containing
-#' the outer products of the random effect covariates in a lower triangular,
-#' (possibly sparse) matrix. If tapering is applied, the list entries, i.e.,
-#' the outer products have to be given as \code{\link[spam]{spam}} objects.
-#' @param taper     (\code{NULL} or \code{spam}) \cr If covariance tapering is
-#' applied, this argument contains the taper matrix, which is a
-#' \code{\link[spam]{spam}} object. Otherwise, it is \code{NULL}.
-#'
-#' @return Returns a positive-definite covariance matrix y, which is needed in
-#' the MLE. Specifically, a Cholesky Decomposition is applied on the covariance
-#' matrix.
-#'
-#'
-#' @author Jakob Dambon
-#' @references Dambon, J. A., Sigrist, F., Furrer, R. (2021)
-#'    \emph{Maximum likelihood estimation of spatially varying coefficient
-#'    models for large data with an application to real estate price prediction},
-#'    Spatial Statistics \doi{10.1016/j.spasta.2020.100470}
-#'
-#'
-#' @examples
-#' # locations
-#' locs <- 1:6
-#' # random effects covariates
-#' W <- cbind(rep(1, 6), 5:10)
-#' # distance matrix with and without tapering
-#' d <- as.matrix(dist(locs))
-#' # distance matrix with and without tapering
-#' tap_dist <- 2
-#' d_tap <- spam::nearest.dist(locs, delta = tap_dist)
-#' # call without tapering
-#' (Sy <- varycoef:::Sigma_y(
-#'   x = rep(0.5, 5),
-#'   cov_func = function(x) spam::cov.exp(d, x),
-#'   outer.W = lapply(1:ncol(W), function(k) W[, k] %o% W[, k])
-#' ))
-#' str(Sy)
-#' # call with tapering
-#' (Sy_tap <- varycoef:::Sigma_y(
-#'   x = rep(0.5, 5),
-#'   cov_func = function(x) spam::cov.exp(d_tap, x),
-#'   outer.W = lapply(1:ncol(W), function(k)
-#'     spam::as.spam((W[, k] %o% W[, k]) * (d_tap<=tap_dist))
-#'   ),
-#'   taper = spam::cov.wend1(d_tap, c(tap_dist, 1, 0))
-#' ))
-#' str(Sy_tap)
-#' # difference between tapered and untapered covariance matrices
-#' Sy-Sy_tap
+# Covariance Matrix of GP-based SVC Model
+#
+# Builds the covariance matrix of \eqn{y} (p. 6, Dambon et al. (2021)
+#\doi{10.1016/j.spasta.2020.100470}) for a given set of covariance
+# parameters and other, pre-defined objects (like the outer-products,
+# covariance function, and, possibly, a taper matrix).
+#
+# @param x         (\code{numeric(2q+1)}) \cr Non negative vector containing
+# the covariance parameters in the following order: \eqn{\rho_1, \sigma_1^2,
+# ..., \rho_q, \sigma_q^2 , \tau^2}. Note that the odd entries, i.e., the
+# ranges and the nugget variance, have to be greater than 0, otherwise the
+# covariance matrix is not well-defined (singularities or not-invertible).
+# @param cov_func  (\code{function}) \cr A covariance function that works on
+# the pre-defined distance matrix \code{d}. It takes a numeric vector as an
+# input, the first entry being the range, the second being the variance
+# (also called partial sill). Usually, it is defined as, e.g.:
+# \code{function(pars) spam::cov.exp(d, pars)} or any other covariance function
+# defined for two parameters.
+# @param outer.W   (\code{list(q)}) \cr A list of length \code{q} containing
+# the outer products of the random effect covariates in a lower triangular,
+# (possibly sparse) matrix. If tapering is applied, the list entries, i.e.,
+# the outer products have to be given as \code{\link[spam]{spam}} objects.
+# @param taper     (\code{NULL} or \code{spam}) \cr If covariance tapering is
+# applied, this argument contains the taper matrix, which is a
+# \code{\link[spam]{spam}} object. Otherwise, it is \code{NULL}.
+#
+# @return Returns a positive-definite covariance matrix y, which is needed in
+# the MLE. Specifically, a Cholesky Decomposition is applied on the covariance
+# matrix.
+#
+#
+# @author Jakob Dambon
+# @references Dambon, J. A., Sigrist, F., Furrer, R. (2021)
+#    \emph{Maximum likelihood estimation of spatially varying coefficient
+#    models for large data with an application to real estate price prediction},
+#    Spatial Statistics \doi{10.1016/j.spasta.2020.100470}
+#
+#
+# @examples
+# # locations
+# locs <- 1:6
+# # random effects covariates
+# W <- cbind(rep(1, 6), 5:10)
+# # distance matrix with and without tapering
+# d <- as.matrix(dist(locs))
+# # distance matrix with and without tapering
+# tap_dist <- 2
+# d_tap <- spam::nearest.dist(locs, delta = tap_dist)
+# # call without tapering
+# (Sy <- varycoef:::Sigma_y(
+#   x = rep(0.5, 5),
+#   cov_func = function(x) spam::cov.exp(d, x),
+#   outer.W = lapply(1:ncol(W), function(k) W[, k] %o% W[, k])
+# ))
+# str(Sy)
+# # call with tapering
+# (Sy_tap <- varycoef:::Sigma_y(
+#   x = rep(0.5, 5),
+#   cov_func = function(x) spam::cov.exp(d_tap, x),
+#   outer.W = lapply(1:ncol(W), function(k)
+#     spam::as.spam((W[, k] %o% W[, k]) * (d_tap<=tap_dist))
+#   ),
+#   taper = spam::cov.wend1(d_tap, c(tap_dist, 1, 0))
+# ))
+# str(Sy_tap)
+# # difference between tapered and untapered covariance matrices
+# Sy-Sy_tap
 Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
   n <- nrow(outer.W[[1]])
   q <- length(outer.W)
@@ -367,28 +397,28 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 
 
 
-#' Preparation of Parameter Output
-#'
-#' Prepares and computes the ML estimates and their respective standard errors.
-#' @param output_par  (\code{numeric}) \cr Found optimal value of
-#' \code{\link[stats]{optim}}.
-#' @param Sigma_final (\code{spam} or \code{matrix(n, n)}) \cr Covariance matrix
-#' Sigma of SVC under final covariance parameters.
-#' @param Rstruct     (\code{NULL} or \code{spam.chol.NgPeyton}) \cr If
-#' covariance tapering is used, the Cholesky factor has been calculated
-#' previously and can be used to efficiently update the Cholesky factor of
-#' \code{Sigma_final}, which is an \code{spam} object.
-#' @param profileLik  (\code{logical(1)}) \cr Indicates if optimization has been
-#' conducted over full or profile likelihood.
-#' @param X (\code{matrix(n, p)}) Design matrix
-#' @param y (\code{numeric(p)}) Response vector
-#' @param H (\code{NULL} or \code{matrix}) Hessian of MLE
-#' @param q (\code{numeric(1)}) Number of SVC
-#'
-#' @return A \code{list} with two \code{data.frame}. Each contains the estimated
-#' parameters with their standard errors of the fixed and random effects,
-#' respectively.
-#'
+# Preparation of Parameter Output
+#
+# Prepares and computes the ML estimates and their respective standard errors.
+# @param output_par  (\code{numeric}) \cr Found optimal value of
+# \code{\link[stats]{optim}}.
+# @param Sigma_final (\code{spam} or \code{matrix(n, n)}) \cr Covariance matrix
+# Sigma of SVC under final covariance parameters.
+# @param Rstruct     (\code{NULL} or \code{spam.chol.NgPeyton}) \cr If
+# covariance tapering is used, the Cholesky factor has been calculated
+# previously and can be used to efficiently update the Cholesky factor of
+# \code{Sigma_final}, which is an \code{spam} object.
+# @param profileLik  (\code{logical(1)}) \cr Indicates if optimization has been
+# conducted over full or profile likelihood.
+# @param X (\code{matrix(n, p)}) Design matrix
+# @param y (\code{numeric(p)}) Response vector
+# @param H (\code{NULL} or \code{matrix}) Hessian of MLE
+# @param q (\code{numeric(1)}) Number of SVC
+#
+# @return A \code{list} with two \code{data.frame}. Each contains the estimated
+# parameters with their standard errors of the fixed and random effects,
+# respectively.
+#
 #' @importFrom methods is
 prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
                             X, y, H, q) {
@@ -459,20 +489,20 @@ prep_par_output <- function(output_par, Sigma_final, Rstruct, profileLik,
 # }
 
 
-#' Computes (Cross-) Distances
-#'
-#' @param x     (\code{matrix}) \cr Matrix containing locations
-#' @param y     (\code{NULL} or \code{matrix}) \cr If \code{NULL}, computes the
-#'     distances between \code{x}. Otherwise, computes cross-distances, i.e.,
-#'     pair-wise distances between rows of \code{x} and \code{y}.
-#' @param taper (\code{NULL} or \code{numeric(1)}) \cr If \code{NULL}, all
-#'     distances are considered. Otherwise, only distances shorter than
-#'     \code{taper} are used. Hence the output will be a sparse matrix of type
-#'     \code{\link[spam]{spam}}.
-#' @param ...   Further arguments for either \code{\link[stats]{dist}} or
-#'     \code{\link[spam]{nearest.dist}}.
-#'
-#' @return A \code{matrix} or \code{spam} object.
+# Computes (Cross-) Distances
+#
+# @param x     (\code{matrix}) \cr Matrix containing locations
+# @param y     (\code{NULL} or \code{matrix}) \cr If \code{NULL}, computes the
+#     distances between \code{x}. Otherwise, computes cross-distances, i.e.,
+#     pair-wise distances between rows of \code{x} and \code{y}.
+# @param taper (\code{NULL} or \code{numeric(1)}) \cr If \code{NULL}, all
+#     distances are considered. Otherwise, only distances shorter than
+#     \code{taper} are used. Hence the output will be a sparse matrix of type
+#     \code{\link[spam]{spam}}.
+# @param ...   Further arguments for either \code{\link[stats]{dist}} or
+#     \code{\link[spam]{nearest.dist}}.
+#
+# @return A \code{matrix} or \code{spam} object.
 #' @importFrom spam nearest.dist
 #' @importFrom stats dist
 own_dist <- function(x, y = NULL, taper = NULL, ...) {
@@ -519,4 +549,20 @@ get_taper <- function(cov.name, d, tapering) {
     "mat32" = spam::cov.wend1(d, c(tapering, 1, 0)),
     "mat52" = spam::cov.wend2(d, c(tapering, 1, 0))
   )
+}
+
+is.formula <- function(x){
+  inherits(x,"formula")
+}
+
+#' @importFrom stats as.formula
+drop_response <- function(formula) {
+  stopifnot(is.formula(formula))
+  
+  deparsed_form <- as.character(formula)
+  if (length(deparsed_form) > 2L) {
+    return(stats::as.formula(paste(deparsed_form[c(1, 3)], collapse = " ")))
+  } else {
+    return(formula)  
+  }
 }
