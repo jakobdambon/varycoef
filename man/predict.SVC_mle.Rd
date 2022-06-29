@@ -57,7 +57,7 @@ Prediction of SVCs (and response variable)
 \examples{
 ## ---- toy example ----
 ## We use the sampled, i.e., one dimensional SVCs
-data(SVCdata)
+str(SVCdata)
 # sub-sample data to have feasible run time for example
 set.seed(123)
 id <- sample(length(SVCdata$locs), 50)
@@ -81,7 +81,12 @@ predict(fit_mat, newlocs = 1:2)
 predict(fit_form, newlocs = 1:2)
 
 # predicting SVCs and response providing new covariates
-predict(fit_mat, newX = matrix(c(1, 1, 3, 4), ncol = 2), newlocs = 1:2)
+predict(
+  fit_mat, 
+  newX = matrix(c(1, 1, 3, 4), ncol = 2), 
+  newW = matrix(c(1, 1, 3, 4), ncol = 2), 
+  newlocs = 1:2
+)
 predict(fit_form, newdata = data.frame(X = 3:4), newlocs = 1:2)
 
 }

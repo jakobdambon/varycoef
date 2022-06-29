@@ -15,7 +15,7 @@ SVC_mle(...)
   data,
   RE_formula = NULL,
   locs,
-  control,
+  control = NULL,
   optim.control = list(),
   ...
 )
@@ -62,13 +62,15 @@ the function returns a list with two entries:
    \item \code{obj_fun}: the objective function used in the optimization
    \item \code{args}: the arguments to evaluate the objective function.
 }
-For further detials, see description of \code{\link{SVC_mle_control}}.
+For further details, see description of \code{\link{SVC_mle_control}}.
 }
 \description{
 Conducts a maximum likelihood estimation (MLE) for a Gaussian
-  process-based SVC model as described in Dambon et al. (2021)
-  \doi{10.1016/j.spasta.2020.100470}. More specifially, the model is
-  defined as:
+  process-based spatially varying coefficient model as described in 
+  Dambon et al. (2021) \doi{10.1016/j.spasta.2020.100470}.
+}
+\details{
+The GP-based SVC model is defined with some abuse of notation as:
 
 \deqn{y(s) = X \mu + W \eta (s) + \epsilon(s)}
 
@@ -86,11 +88,26 @@ where:
 
 The MLE is an numeric optimization that runs \code{\link[stats]{optim}} or
 (if parallelized) \code{\link[optimParallel]{optimParallel}}.
+
+You can call the function in two ways. Either, you define the model matrices
+yourself and provide them using the arguments \code{X} and \code{W}. As usual, 
+the individual columns correspond to the fixed and random effects, i.e., the 
+Gaussian processes, respectively. The second way is to call the function with
+formulas, like you would in \code{\link[stats]{lm}}. From the \code{data.frame}
+provided in argument \code{data}, the respective model matrices as described
+above are implicitly built. Using simple arguments \code{formula} and 
+\code{RE_formula} with \code{data} column names, we can decide which 
+covariate is modeled with a fixed or random effect (SVC). 
+
+Note that similar to model matrix call from above, if the \code{RE_formula} 
+is not provided, we use the one as in argument \code{formula}. Further, note 
+that the intercept is implicitly constructed in the model matrix if not 
+prohibited.
 }
 \examples{
 ## ---- toy example ----
 ## We use the sampled, i.e., one dimensional SVCs
-data(SVCdata)
+str(SVCdata)
 # sub-sample data to have feasible run time for example
 set.seed(123)
 id <- sample(length(SVCdata$locs), 50)
@@ -124,16 +141,18 @@ locs <- as.matrix(meuse[, 1:2])/1000
 
 ## starting MLE
 # the next call takes a couple of seconds
-fit <- SVC_mle(y = y, X = X, locs = locs,
-               # has 4 fixed effects, but only 3 random effects (SVC)
-               # elev is missing in SVC
-               W = X[, 1:3],
-               control = SVC_mle_control(
-                 # inital values for 3 SVC
-                 # 7 = (3 * 2 covariance parameters + nugget)
-                 init = c(rep(c(0.4, 0.2), 3), 0.2),
-                 profileLik = TRUE
-               ))
+fit <- SVC_mle(
+  y = y, X = X, locs = locs,
+  # has 4 fixed effects, but only 3 random effects (SVC)
+  # elev is missing in SVC
+  W = X[, 1:3],
+  control = SVC_mle_control(
+    # inital values for 3 SVC
+    # 7 = (3 * 2 covariance parameters + nugget)
+    init = c(rep(c(0.4, 0.2), 3), 0.2),
+    profileLik = TRUE
+  )
+)
 
 ## summary and residual output
 summary(fit)

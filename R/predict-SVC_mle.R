@@ -42,7 +42,7 @@
 #' @examples
 #' ## ---- toy example ----
 #' ## We use the sampled, i.e., one dimensional SVCs
-#' data(SVCdata)
+#' str(SVCdata)
 #' # sub-sample data to have feasible run time for example
 #' set.seed(123)
 #' id <- sample(length(SVCdata$locs), 50)
@@ -66,7 +66,12 @@
 #' predict(fit_form, newlocs = 1:2)
 #' 
 #' # predicting SVCs and response providing new covariates
-#' predict(fit_mat, newX = matrix(c(1, 1, 3, 4), ncol = 2), newlocs = 1:2)
+#' predict(
+#'   fit_mat, 
+#'   newX = matrix(c(1, 1, 3, 4), ncol = 2), 
+#'   newW = matrix(c(1, 1, 3, 4), ncol = 2), 
+#'   newlocs = 1:2
+#' )
 #' predict(fit_form, newdata = data.frame(X = 3:4), newlocs = 1:2)
 #' 
 #' @import spam
@@ -157,10 +162,10 @@ predict.SVC_mle <- function(
   if (!is.null(newdata)) {
     if (!is.null(object$formula)) {
       if (!is.null(newX)) {
-        warning("Formula and newdata provided: newX argument was overwritten!")
+        warning("Formula and 'newdata' provided: 'newX' argument was overwritten!")
       }
       if (!is.null(newW)) {
-        warning("Formula and newdata provided: newW argument was overwritten!")
+        warning("Formula and 'newdata' provided: 'newW' argument was overwritten!")
       }
       # create covariates
       # drop response from fromula
@@ -174,7 +179,6 @@ predict.SVC_mle <- function(
               Cannot compute fixed and random effect covariates.")
     }
   }
-  
 
   if (!is.null(newX) & !is.null(newW)) {
     # Do dimensions for training and prediction data match?
@@ -252,7 +256,7 @@ predict.SVC_mle <- function(
   } else {
 
     if (compute.y.var)
-      warning("Please provide new X and W matrix to predict y and its standard deviation.")
+      warning("Please provide 'newX' and 'newW' to predict y and its variance.")
 
     out <- as.data.frame(cbind(eff, newlocs))
     colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), paste0("loc_", 1:ncol(newlocs)))
