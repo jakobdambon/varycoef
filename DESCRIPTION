@@ -2,29 +2,23 @@ Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
 Version: 0.3.4
-Authors@R: 
-    c(person(given = "Jakob A.",
-             family = "Dambon",
-             role = c("aut", "cre"),
-             email = "jakob.dambon@math.uzh.ch",
-             comment = c(ORCID = "0000-0001-5855-2017")),
-      person(given = "Fabio",
-             family = "Sigrist",
-             role = "ctb",
-             comment = c(ORCID = "0000-0002-3994-2244")),
-      person(given = "Reinhard",
-             family = "Furrer",
-             role = "ctb",
-             comment = c(ORCID = "0000-0002-6319-2332")))
-Description: Implements a maximum likelihood estimation (MLE)
-    method for estimation and prediction of Gaussian process-based
-    spatially varying coefficient (SVC) models 
-    (Dambon et al. (2021a) <doi:10.1016/j.spasta.2020.100470>). 
-    Covariance tapering (Furrer et al. (2006) <doi:10.1198/106186006X132178>) can 
-    be applied such that the method scales to large data. Further, it implements
-    a joint variable selection of the fixed and random effects (Dambon et al. 
-    (2021b) <arXiv:2101.01932>). The package and its capabilities are described
-    in (Dambon et al. (2021c) <arXiv:2106.02364>).
+Authors@R: c(
+    person("Jakob A.", "Dambon", , "jakob.dambon@math.uzh.ch", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-5855-2017")),
+    person("Fabio", "Sigrist", role = "ctb",
+           comment = c(ORCID = "0000-0002-3994-2244")),
+    person("Reinhard", "Furrer", role = "ctb",
+           comment = c(ORCID = "0000-0002-6319-2332"))
+  )
+Description: Implements a maximum likelihood estimation (MLE) method for
+    estimation and prediction of Gaussian process-based spatially varying
+    coefficient (SVC) models (Dambon et al. (2021a)
+    <doi:10.1016/j.spasta.2020.100470>).  Covariance tapering (Furrer et
+    al. (2006) <doi:10.1198/106186006X132178>) can be applied such that
+    the method scales to large data. Further, it implements a joint
+    variable selection of the fixed and random effects (Dambon et al.
+    (2021b) <arXiv:2101.01932>). The package and its capabilities are
+    described in (Dambon et al. (2021c) <arXiv:2106.02364>).
 License: GPL-2
 URL: https://github.com/jakobdambon/varycoef
 BugReports: https://github.com/jakobdambon/varycoef/issues
@@ -38,17 +32,17 @@ Imports:
     mlrMBO,
     optimParallel (>= 0.8-1),
     ParamHelpers,
-    pbapply, 
+    pbapply,
     smoof,
     spam
 Suggests:
     DiceKriging,
     gstat,
     parallel,
-    spData,
     sp,
+    spData,
     testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
-Config/testthat/edition: 3
