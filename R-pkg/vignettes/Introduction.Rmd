@@ -280,8 +280,8 @@ We notice a significant difference in both the in- and out-of-sample RMSE.
 We now turn to a real world data set, the `meuse` data from the package `sp`.
 
 ```{r meuse intro}
-# attach sp and load data
 library(sp)
+# attach sp and load data
 data("meuse")
 
 # documentation
@@ -309,18 +309,18 @@ locs <- as.matrix(meuse[, c("x", "y")])
 
 ### Exploratory Data Analysis
 
-First, we plot the log cadmium measurements at their respective locations: 
+First, we plot the log Cadmium measurements at their respective locations. The color ranges from blue (high Cadmium measuremnets) to red (low Cadmium measurements).
 
 ```{r meuse data spatial plot, echo = FALSE, message=FALSE, warning=FALSE, eval = FALSE}
-# construct spatial object
-sp_meuse <- cbind(df_meuse, locs)
-coordinates(sp_meuse) <- ~x+y
-proj4string(sp_meuse) <- CRS("+init=epsg:28992")
-
-# using package tmap
-library(tmap)
-# producing an interactive map
-tmap_leaflet(tm_shape(sp_meuse) + tm_dots("l_cad", style = "cont"))
+# load meuse river outlines
+data("meuse.riv")
+# create spatial object to create spplot
+sp_meuse <- df_meuse
+coordinates(sp_meuse) <- ~ locs
+# visualize log Cadmium measurements along river
+spplot(
+  sp_meuse, zcol = "l_cad", main = "Meuse River and Log Cadmium Measurements"
+  ) + layer(panel.lines(meuse.riv))
 ```
 
 Generally, the values for `l_cad` are highest close to the river Meuse. However, there is some spatial clustering comparing the center of all observations to the Northern part. Therefore, we expect the `dist` covariate to be important. Omitting the spatial structure, we can also look at a `pairs` plot.
@@ -329,7 +329,7 @@ Generally, the values for `l_cad` are highest close to the river Meuse. However,
 pairs(df_meuse)
 ```
 
-Indeed, we note linear relationships between `l_cad` on the one hand and `elev` as well as `dist` on the otherhand. Further, when `lime` is equal to 1, i.e., there is lime present in the soil, the cadmium measurements are higher.
+Indeed, we note linear relationships between `l_cad` on the one hand and `elev` as well as `dist` on the other hand. Further, when `lime` is equal to 1, i.e., there is lime present in the soil, the Cadmium measurements are higher.
 
 ### Linear Model
 
@@ -351,10 +351,11 @@ par(oldpar)
 The spatial distribution of the residuals is the following:
 
 ```{r LM spatial residuals, echo=FALSE, eval = FALSE}
-# add LM residuals to data frame
-sp_meuse$LM_res <- resid(fit_lm)
-# plot residuals at corresponding locations
-tmap_leaflet(tm_shape(sp_meuse) + tm_dots("LM_res", style = "cont"))
+# add residuals to spatial object
+sp_meuse$res_lm <- resid(fit_lm)
+# visualize linear model residuals along river
+spplot(sp_meuse, zcol = "res_lm",
+     main = "Meuse River and Residuals of Linear Model") + layer(panel.lines(meuse.riv))
 ```
 
 One can observe that there is a spatial clustering of the residuals. This motivates us to use an SVC model. 
@@ -369,7 +370,7 @@ fit_svc <- SVC_mle(l_cad ~ ., data = df_meuse, locs = locs,
                      profileLik = TRUE, 
                      parscale = TRUE
                    ))
-summary(fit_svc)
+coef(fit_svc)
 ```
 
 The obtained mean coefficient values of the linear and SVC model are quite similar, but this doe not come as a surprise.
@@ -387,7 +388,6 @@ Additionaly to the `meuse` data the `sp` package also contains another data set 
 ```{r varycoef predict locations}
 # study area
 data("meuse.grid")
-
 # prediction
 df_svc_pred <- predict(fit_svc, newlocs = as.matrix(meuse.grid[, c("x", "y")]))
 # outcome
@@ -401,24 +401,12 @@ kable(head(df_svc_pred))
 Here are the predicted SVCs for the entire study area, where we added the estimated mean to the deviations:
 
 ```{r meuse data  plot SVCs, echo = FALSE, eval = FALSE}
-# add mean values
-sp_svc_pred <- df_svc_pred + 
-  matrix(
-    c(coef(fit_svc), 0, 0), 
-    ncol = 6, 
-    nrow = nrow(df_svc_pred), 
-    byrow = TRUE
-  )
+sp_svc_pred <- df_svc_pred 
 # make spatial data frame object
 coordinates(sp_svc_pred) <- ~ loc_1 + loc_2
-proj4string(sp_svc_pred) <- proj4string(sp_meuse)
-# make maps
-l_tm <- lapply(colnames(df_svc_pred)[1:4], function(var) {
-  tm_shape(sp_svc_pred) + 
-    tm_dots(var, style = "cont")
-})
-# arrange
-tmap_arrange(l_tm, ncol = 2, nrow = 2)
+# visualize linear model residuals along river
+spplot(sp_svc_pred, main = "Spatial Deviations of SVCs") +
+    layer(panel.lines(meuse.riv))
 ```
 
 We see spatial structures in the first three coefficients, and the last one for covariate `elev` is constant. Our method is capable to estimate constant coefficients within the MLE. Further, there exist selection methods to not only select the varying coefficients, but to also select the mean value, i.e., the fixed effect. 
