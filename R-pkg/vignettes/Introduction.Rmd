@@ -13,32 +13,37 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, 
                       fig.width=7, fig.height=4)
 library(knitr)
+library(tmap)
 prop_train <- 0.2
 ```
 
 
 ## Introduction
 
-With the release of the R package `varycoef` on CRAN ([see](https://CRAN.R-project.org/package=varycoef)) we enable you to analyze your spatial data and in a simple, yet versatile way. The underlying idea are *spatially varying coefficients* (SVC) that extend the linear model 
+With the R package `varycoef` we enable the user to analyze spatial data and in a simple, yet versatile way. The underlying idea are *spatially varying coefficients* (SVC) that extend the linear model 
 
 $$ y_i = x_i^{(1)} \beta_1 + ... + x_i^{(p)} \beta_p + \varepsilon_i$$
-by allowing the coefficients $\beta_j, j = 1, ..., p$ to vary over space. In particular, we use so-called *Gaussian processes* (GP) to define the spatial structure of the coefficients. Therefore, our models are called *GP-based SVC models*.
+by allowing the coefficients $\beta_j, j = 1, ..., p$ to vary over space. That is, we assume the following model: 
+
+$$ y_i = x_i^{(1)} \beta_1(s) + ... + x_i^{(p)} \beta_p(s) + \varepsilon_i$$
+
+In particular, we use so-called *Gaussian processes* (GP) to define the spatial structure of the coefficients. Therefore, our models are called *GP-based SVC models*.
 
 In this article, we will show what SVC models are and how to define them. Afterwards, we give a short and illustrative example with synthetic data and show how to apply the methods provided in `varycoef`. Finally, using the well known data set `meuse` from the package `sp`.
 
 ### Disclaimer
 
-Th analyses and results in this article are meant to be a show case of what is possible using the package `varycoef` and **not** to write the most rigorous statistical analysis of a data set. As this article should make the usage of `varycoef` as simple as possible, we skip over some of the technical or mathematical details and in some cases abuse notation. For a rigorous definition, please refer to the resources below. Further, the model estimation is performed on rather small data sets ($n < 200$) to ease computation. We recommend to apply SVC models, particularly with many coefficients, on larger data sets.
+The analyses and results in this article are meant to introduce the package `varycoef` and **not** to write the a rigorous statistical analysis of a data set. As this article should make the usage of `varycoef` as simple as possible, we skip over some of the technical or mathematical details and in some cases abuse notation. For a rigorous definition, please refer to the resources below. Further, the model estimation is performed on rather small data sets to ease computation ($n < 200$). We recommend to apply SVC models, particularly with many coefficients, on larger data sets.
 
 ### Further References
 
 Our package evolved over time and we present some highlights:
 
-- In [Dambon et al. (2021a)](https://www.sciencedirect.com/science/article/pii/S2211675320300646) we introduce the GP-based SVC model and the methodology on how to estimate them. Further, we provide a comparison on synthetic and real world data with other SVC methodologies.
+- In [Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470) we introduce the GP-based SVC model and the methodology on how to estimate them. Further, we provide a comparison on synthetic and real world data with other SVC methodologies.
 
-- In [Dambon et al. (2022a)](https://sjes.springeropen.com/articles/10.1186/s41937-021-00080-2) we present an in-depth analysis of Swiss real estate data using GP-based SVC models.
+- In [Dambon et al. (2022a)](https://doi.org/10.1186/s41937-021-00080-2) we present an in-depth analysis of Swiss real estate data using GP-based SVC models.
 
-- In [Dambon et al. (2022b)](link) we introduce a variable selection method. This is not covered by this article.
+- In [Dambon et al. (2022b)](https://doi.org/10.1080/13658816.2022.2097684) we introduce a variable selection method. This is not covered by this article.
 
 ### Preliminaries
 
@@ -65,7 +70,7 @@ devtools::install_github("jakobdambon/varycoef")
 
 Within the R package, you can use these resources: 
 
-```{r, help and vignettes}
+```{r help and vignettes}
 # attach package
 library(varycoef)
 
@@ -89,7 +94,7 @@ As mentioned before, an SVC model extends the linear model by allowing the coeff
 $$ y_i = x_i^{(1)} \beta_1(s) + ... + x_i^{(p)} \beta_p(s) + \varepsilon_i,$$
 for some location $s$ where $\beta_1(s)$n indicates the dependence of a coefficient on the space. The coefficients are defined by Gaussian processes, but we skip over this part for now and take a look at a data set that was sampled using the model above. In `varycoef`, a data set named `SVCdata` is provided:
 
-```{r, synthetic data}
+```{r synthetic data}
 str(SVCdata)
 help(SVCdata)
 # number of observations, number of coefficients
@@ -100,7 +105,7 @@ It consists of the response `y`, the model matrix `X`, the locations `locs`, and
 
 We will use `r n*prop_train` observations of the data to train the model and leave the remaining `r n*(1-prop_train)` out as a test sample, i.e.:
 
-```{r, train and test}
+```{r synthetic data train and test}
 # create data frame
 df <- with(SVCdata, data.frame(y = y, x = X[, 2], locs = locs))
 set.seed(123)
@@ -113,7 +118,7 @@ df_test <- df[-idTrain, ]
 
 We plot the part of the data that is usually available to us:
 
-```{r, EDA}
+```{r synthetic data EDA}
 par(mfrow = 1:2)
 plot(y ~ x, data = df_train, xlab = "x", ylab = "y", 
      main = "Scatter Plot of Response and Covariate")
@@ -124,9 +129,9 @@ par(mfrow = c(1, 1))
 
 We note that there is a clear linear dependency between the covariate and the response. However, there is not a clear spatial structure. We estimate a linear model and analyze the residuals thereof.
 
-```{r, linear model}
+```{r synthetic data linear model}
 fit_lm <- lm(y ~ x, data = df_train)
-summary(fit_lm)
+coef(fit_lm)
 # residual plots
 par(mfrow = 1:2)
 plot(x = fitted(fit_lm), y = resid(fit_lm), 
@@ -143,17 +148,20 @@ Discarding the spatial information, we observe no structure within the residuals
 
 ### SVC Model
 
-To estimate an SVC model, we can use the `SVC_mle()` function almost like the `lm()` function from above. As the name suggests, we use a *maximum likelihood estimation* (MLE) for estimating the parameters. We ignore the covariance parameters in the `summary()`-output for the moment. 
+To estimate an SVC model, we can use the `SVC_mle()` function almost like the `lm()` function from above. As the name suggests, we use a *maximum likelihood estimation* (MLE) for estimating the parameters. For now, we only focus on the mean coefficients, which we obtain by the `coef()` method.
 
-```{r}
+```{r synthetic data svc model}
 fit_svc <- SVC_mle(y ~ x, data = df_train, locs = df_train$locs)
-summary(fit_svc)
+coef(fit_svc)
 ```
 
-The only additional argument that we have to provide explicitly are the observation locations. The output is an object of class `r class(fit_svc)`. We can apply most of the methods that exist for `lm` objects to out output, too. For instance methods of `summary()`, `fitted()`, or `resid()`:
+The only additional argument that we have to provide explicitly when calling `SVC_mle()` are the coordinates, i.e., the observation locations. The output is an object of class `r class(fit_svc)`. We can apply most of the methods that exist for `lm` objects to out output, too. For instance methods of `summary()`, `fitted()`, or `resid()`. We give the `summary()` output but do not go into details for now. Further, use the `fitted()` and `residuals()` methods to analyze the SVC model. Contrary to a `fitted()` method for an `lm` object, the output does not only contain the fitted response, but is a `data.frame` that contains the spatial deviations from the mean named `SVC_1`, `SVC_2`, and so on (see section Model Interpretation below), the response `y.pred`, and the respective locations `loc_1`, `loc_2`, etc. In our case, there is only one column since the locations are from a one-dimensional domain. 
 
-```{r, methods}
+```{r methods}
+# summary output
 summary(fit_svc)
+# fitted output
+head(fitted(fit_svc))
 # residual plots
 par(mfrow = 1:2)
 plot(x = fitted(fit_svc)$y.pred, y = resid(fit_svc), 
@@ -170,13 +178,13 @@ Compared to the output and residuals of the linear models, we immediately see th
 
 ### Comparison of Models
 
-We end this example on a synthetic data set by comparing the linear with the SVC model. We already saw some advantages of the SVC model when investigating the residuals. Now, we take a look at the quality of the model fit, the model interpretation, and the predictive performance. 
+We end this synthetic data example by comparing the linear with the SVC model. We already saw some advantages of the SVC model when investigating the residuals. Now, we take a look at the quality of the model fit, the model interpretation, and the predictive performance. 
 
 #### Model Fit
 
-We can compare the models by the log likelihood, Akaike's or the Bayesian information criterion (AIC and BIC, respectively): 
+We can compare the models by the log likelihood, Akaike's or the Bayesian information criterion (AIC and BIC, respectively). Again, the corresponding methods are available:
 
-```{r, model fit, echo = FALSE}
+```{r synthetic data  model fit, echo = FALSE}
 kable(data.frame(
   Model = c("linear", "SVC"), 
   `log Likelihood` = as.numeric(c(logLik(fit_lm), logLik(fit_svc))), 
@@ -187,19 +195,22 @@ kable(data.frame(
 
 In all four metrics the SVC model outperforms the linear model, i.e., the log likelihood is larger and the two information criteria are smaller.
 
-#### Model Interpretation
+#### Visualization of Coefficients
 
-While the linear model estimates constant coefficients, contrary and as the name suggests, the SVC model's coefficients vary over space. That is why the `fitted()` method does not only return the fitted response, but also the fitted coefficients and at their given locations:
+While the linear model estimates constant coefficients $\beta_j$, contrary and as the name suggests, the SVC model's coefficients vary over space $\beta_j(s)$. That is why the `fitted()` method does not only return the fitted response, but also the fitted coefficients and at their given locations:
 
-```{r, fitted, echo = FALSE}
+```{r synthetic data fitted, echo = FALSE}
 kable(head(fitted(fit_svc)))
 ```
 
-We visualize the coefficients at their respective locations. **One important thing to note is that the fitted values are the deviations from the mean value**. Therefore, we need to add the mean to the fitte deviations:
+Therefore, the SVC mentioned above is the sum of the mean value from the method `coef()` which we name $\mu_j$ and the spatial deviations from above which we name $\eta_j(s)$, i.e., $\beta_j(s) = \mu_j + \eta_j(s)$. We visualize the coefficients at their respective locations:
 
-```{r}
+```{r synthetic data SVC plot}
 mat_coef <- cbind(
-  lin1 = coef(fit_lm)[1], lin2 = coef(fit_lm)[2], 
+  # constant coefficients from lm
+  lin1 = coef(fit_lm)[1], 
+  lin2 = coef(fit_lm)[2], 
+  # SVCs
   svc1 = coef(fit_svc)[1] + fitted(fit_svc)[, 1], 
   svc2 = coef(fit_svc)[2] + fitted(fit_svc)[, 2]
 )
@@ -207,17 +218,15 @@ matplot(
   x = df_train$locs, 
   y = mat_coef, pch = c(1, 2, 1, 2), col = c(1, 1, 2, 2), 
   xlab = "Location", ylab = "Beta", main = "Estiamted Coefficients")
-legend("topright", legend = c("Intercept", "covariate", "linear", "SVC"), 
+legend("topright", legend = c("Intercept", "covariate x", "linear model", "SVC model"), 
        pch = c(1, 2, 19, 19), col = c("grey", "grey", "black", "red"))
 ```
 
-The interpretation of both models is quite similar. Whereas the linear model estimates constant coefficients that hold for the entire domain, the SVC model estimates coefficients' means and some respective deviation. The SVC model interpretation in a nutshell: **Given a location, the SVC model behaves like a linear model.** 
-
-#### Predictve Performance
+#### Spatial Prediction
 
 We use the entire data set to compute the in- and out-of-sample rooted mean square error (RMSE) for the response for both the linear and SVC model. Here we rely on the `predict()` methods. Further, we can compare the predicted coefficients with the true coefficients provided in `SVCdata`, something that we usually cannot do. 
 
-```{r, predictive performance}
+```{r synthetic data predictive performance}
 df_svc_pred <- predict(fit_svc, newdata = df, newlocs = df$locs)
 mat_coef_pred <- cbind(
   svc1_pred = coef(fit_svc)[1] + df_svc_pred[, 1], 
@@ -236,9 +245,24 @@ legend("topright", legend = c("Intercept", "Covariate", "Train", "Test"),
        lty = c(1, 1, NA, NA))
 ```
 
+#### Model Interpretation
+
+Say we are interested in a particular position, like:
+```{r sample location}
+(s_id <- sample(n, 1))
+```
+
+The coordinate is $s_{`r s_id`}$. Of course, for the `r s_id`th observation location the linear model is simply: 
+
+$$y = \beta_0 + \beta_1\cdot x + \varepsilon =  `r round(coef(fit_lm)[1], 2)` + `r  round(coef(fit_lm)[2], 2)` \cdot x + \varepsilon$$
+
+$$y = \beta_0(s_{`r s_id`}) + \beta_1(s_{`r s_id`})\cdot x + \varepsilon = `r round(coef(fit_lm)[1], 2)` + `r  round(coef(fit_lm)[2], 2)` \cdot x + \varepsilon$$
+
+#### Predictive Performance
+
 Let us compute the errors:
 
-```{r, RMSE}
+```{r synthetic data RMSE}
 SE_lm <- (predict(fit_lm, newdata = df) - df$y)^2
 # df_svc_pred from above
 SE_svc <- (df_svc_pred$y.pred - df$y)^2
@@ -276,7 +300,7 @@ Our goal is to model the log `cadmium` measurements using the following independ
 
 This provides us a "cheap" model, i.e., the covariates can be obtained very cheaply, and we can regress our variable of interest on them.  
 
-```{r, data and location of interest}
+```{r meuse data and location of interest}
 df_meuse <- meuse[, c("dist", "lime", "elev")]
 df_meuse$l_cad <- log(meuse$cadmium)
 df_meuse$lime <- as.numeric(as.character(df_meuse$lime))
@@ -287,7 +311,7 @@ locs <- as.matrix(meuse[, c("x", "y")])
 
 First, we plot the log cadmium measurements at their respective locations: 
 
-```{r spatial plot, echo = FALSE, message=FALSE, warning=FALSE}
+```{r meuse data spatial plot, echo = FALSE, message=FALSE, warning=FALSE, eval = FALSE}
 # construct spatial object
 sp_meuse <- cbind(df_meuse, locs)
 coordinates(sp_meuse) <- ~x+y
@@ -301,7 +325,7 @@ tmap_leaflet(tm_shape(sp_meuse) + tm_dots("l_cad", style = "cont"))
 
 Generally, the values for `l_cad` are highest close to the river Meuse. However, there is some spatial clustering comparing the center of all observations to the Northern part. Therefore, we expect the `dist` covariate to be important. Omitting the spatial structure, we can also look at a `pairs` plot.
 
-```{r, meuse pairs}
+```{r meuse data pairs}
 pairs(df_meuse)
 ```
 
@@ -326,7 +350,7 @@ par(oldpar)
 
 The spatial distribution of the residuals is the following:
 
-```{r LM spatial residuals, echo=FALSE}
+```{r LM spatial residuals, echo=FALSE, eval = FALSE}
 # add LM residuals to data frame
 sp_meuse$LM_res <- resid(fit_lm)
 # plot residuals at corresponding locations
@@ -350,7 +374,7 @@ summary(fit_svc)
 
 The obtained mean coefficient values of the linear and SVC model are quite similar, but this doe not come as a surprise.
 
-```{r, meuse fixed effects}
+```{r meuse fixed effects}
 kable(t(data.frame(
   cbind(`linear` = coef(fit_lm), `SVC`= coef(fit_svc))
 )))
@@ -376,8 +400,7 @@ kable(head(df_svc_pred))
 
 Here are the predicted SVCs for the entire study area, where we added the estimated mean to the deviations:
 
-
-```{r, plot SVCs, echo = FALSE}
+```{r meuse data  plot SVCs, echo = FALSE, eval = FALSE}
 # add mean values
 sp_svc_pred <- df_svc_pred + 
   matrix(
@@ -400,7 +423,6 @@ tmap_arrange(l_tm, ncol = 2, nrow = 2)
 
 We see spatial structures in the first three coefficients, and the last one for covariate `elev` is constant. Our method is capable to estimate constant coefficients within the MLE. Further, there exist selection methods to not only select the varying coefficients, but to also select the mean value, i.e., the fixed effect. 
 
-
 ## Conclusion
 
 I hope that this example was easy to follow and showed the possibilities of how to model SVCs. I will continue my work on `varycoef` to add new and helpful features. On Twitter, I (@JakobDambon) will use \#varycoef to announce updates. If there is a key feature missing or you have questions, please contact me by mailing to jakob.dambon (at) math.uzh.ch.
@@ -414,7 +436,6 @@ I hope that this example was easy to follow and showed the possibilities of how 
 
 Dambon, J. A., Sigrist, F., Furrer, R. (2021) **Maximum likelihood estimation of spatially varying coefficient models for large data with an application to real estate price prediction**, Spatial Statistics, 41 (100470). [doi:10.1016/j.spasta.2020.100470 ](https://doi.org/10.1016/j.spasta.2020.100470)
 
-Dambon, J.A., Fahrländer, S.S., Karlen, S. et al. (2022) **Examining the vintage effect in hedonic pricing using spatially varying coefficients models: a case study of single-family houses in the Canton of Zurich**, Swiss Journal Economics Statistics 158(2). [doi:10.1186/s41937-021-00080-2](https://doi.org/10.1186/s41937-021-00080-2)
+Dambon, J.A., Fahrländer, S.S., Karlen, S. et al. (2022a) **Examining the vintage effect in hedonic pricing using spatially varying coefficients models: a case study of single-family houses in the Canton of Zurich**, Swiss Journal Economics Statistics 158(2). [doi:10.1186/s41937-021-00080-2](https://doi.org/10.1186/s41937-021-00080-2)
 
-
-[Dambon et al. (2022b)](link)
+Dambon, J. A., Sigrist, F., Furrer, R. (2022b) **Joint variable selection of both fixed and random effects for Gaussian process-based spatially varying coefficient models**, International Journal of Geographical Information Science [doi:10.1080/13658816.2022.2097684](https://doi.org/10.1080/13658816.2022.2097684)
