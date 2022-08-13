@@ -13,7 +13,6 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, 
                       fig.width=7, fig.height=4)
 library(knitr)
-library(tmap)
 prop_train <- 0.2
 ```
 
@@ -187,9 +186,9 @@ We can compare the models by the log likelihood, Akaike's or the Bayesian inform
 ```{r synthetic data  model fit, echo = FALSE}
 kable(data.frame(
   Model = c("linear", "SVC"), 
-  `log Likelihood` = as.numeric(c(logLik(fit_lm), logLik(fit_svc))), 
-  AIC = c(AIC(fit_lm), AIC(fit_svc)), 
-  BIC = c(BIC(fit_lm), BIC(fit_svc))
+  `log Likelihood` = round(as.numeric(c(logLik(fit_lm), logLik(fit_svc))), 2), 
+  AIC = round(c(AIC(fit_lm), AIC(fit_svc)), 2), 
+  BIC = round(c(BIC(fit_lm), BIC(fit_svc)), 2)
 ))
 ```
 
@@ -199,11 +198,11 @@ In all four metrics the SVC model outperforms the linear model, i.e., the log li
 
 While the linear model estimates constant coefficients $\beta_j$, contrary and as the name suggests, the SVC model's coefficients vary over space $\beta_j(s)$. That is why the `fitted()` method does not only return the fitted response, but also the fitted coefficients and at their given locations:
 
-```{r synthetic data fitted, echo = FALSE}
-kable(head(fitted(fit_svc)))
+```{r synthetic data fitted}
+head(fitted(fit_svc))
 ```
 
-Therefore, the SVC mentioned above is the sum of the mean value from the method `coef()` which we name $\mu_j$ and the spatial deviations from above which we name $\eta_j(s)$, i.e., $\beta_j(s) = \mu_j + \eta_j(s)$. We visualize the coefficients at their respective locations:
+Therefore, the SVC mentioned above is the sum of the mean value from the method `coef()` which we name $\mu_j$ and the zero-mean spatial deviations from above which we name $\eta_j(s)$, i.e., $\beta_j(s) = \mu_j + \eta_j(s)$. We visualize the coefficients at their respective locations:
 
 ```{r synthetic data SVC plot}
 mat_coef <- cbind(
@@ -234,33 +233,39 @@ mat_coef_pred <- cbind(
 )
 matplot(x = df$locs, y = mat_coef_pred, 
         xlab = "Location", ylab = "Beta", 
-        main = "Fitted and Predicted Coefficients vs True",
+        main = "Predicted vs Actual Coefficients",
         col = c(1, 2), lty = c(1, 1), type = "l")
-pch <- rep(19, n); pch[-idTrain] <- 3
-points(x = df$locs, y = SVCdata$beta[, 1], col = 1, pch = pch)
-points(x = df$locs, y = SVCdata$beta[, 2], col = 2, pch = pch)
-legend("topright", legend = c("Intercept", "Covariate", "Train", "Test"), 
-       col = c("black", "red", "grey", "grey"), 
-       pch = c(NA, NA, 19, 3), 
-       lty = c(1, 1, NA, NA))
+points(x = df$locs, y = SVCdata$beta[, 1], col = 1, pch = ".")
+points(x = df$locs, y = SVCdata$beta[, 2], col = 2, pch = ".")
+legend("topright", legend = c("Intercept", "Covariate", "Actual"), 
+       col = c("black", "red", "black"), 
+       pch = c(NA, NA, "."), 
+       lty = c(1, 1, NA))
 ```
 
 #### Model Interpretation
+
+The linear model is constant and the same for each location, i.e.: 
+
+$$y = \beta_1 + \beta_2\cdot x + \varepsilon =  `r round(coef(fit_lm)[1], 2)` + `r  round(coef(fit_lm)[2], 2)` \cdot x + \varepsilon$$
+Here, the SVC model can be interpreted in a similar way where on average, it is simply the mean coefficient value with some location specific deviation $\eta_j(s)$, i.e.:
+
+$$y = \beta_1(s) + \beta_2(s)\cdot x + \varepsilon = \bigl(`r round(coef(fit_svc)[1], 2)` + \eta_1(s)\bigr) + \bigl(`r  round(coef(fit_svc)[2], 2)`+ \eta_2(s) \bigr)   \cdot x + \varepsilon$$
 
 Say we are interested in a particular position, like:
 ```{r sample location}
 (s_id <- sample(n, 1))
 ```
 
-The coordinate is $s_{`r s_id`}$. Of course, for the `r s_id`th observation location the linear model is simply: 
+The coordinate is $s_{`r s_id`} = `r df$locs[s_id]`$. We can extract the deviations $\eta_j(s)$ and simply add them to the model. We receive the following location specific model.
 
-$$y = \beta_0 + \beta_1\cdot x + \varepsilon =  `r round(coef(fit_lm)[1], 2)` + `r  round(coef(fit_lm)[2], 2)` \cdot x + \varepsilon$$
-
-$$y = \beta_0(s_{`r s_id`}) + \beta_1(s_{`r s_id`})\cdot x + \varepsilon = `r round(coef(fit_lm)[1], 2)` + `r  round(coef(fit_lm)[2], 2)` \cdot x + \varepsilon$$
+$$y = \beta_1(s_{`r s_id`}) + \beta_2(s_{`r s_id`})\cdot x + \varepsilon = \bigl(`r round(coef(fit_svc)[1], 2)`  `r round(df_svc_pred[s_id, 1], 2)`\bigr) + \bigl(`r  round(coef(fit_svc)[2], 2)`+ `r round(df_svc_pred[s_id, 2], 2)`\bigr)   \cdot x + \varepsilon = `r round(coef(fit_svc)[1] + df_svc_pred[s_id, 1], 2)` + `r  round(coef(fit_svc)[2] + df_svc_pred[s_id, 2], 2)`\bigr) \cdot x + \varepsilon$$
+The remaining comparison of the two model at the given location is as usual. Between the both models we see that the intercept of the linear model is larger and the coefficient of $x$ is smaller than the 
+SVC model's intercept and coefficient of $x$, respectively.
 
 #### Predictive Performance
 
-Let us compute the errors:
+Finally, we compare the prediction errors of the model. We compute the rooted mean squared errors (RMSE) for both models and both the training and testing data.
 
 ```{r synthetic data RMSE}
 SE_lm <- (predict(fit_lm, newdata = df) - df$y)^2
@@ -268,12 +273,12 @@ SE_lm <- (predict(fit_lm, newdata = df) - df$y)^2
 SE_svc <- (df_svc_pred$y.pred - df$y)^2
 kable(data.frame(
   model = c("linear", "SVC"), 
-  `in-sample RMSE` = sqrt(c(mean(SE_lm[idTrain]), mean(SE_svc[idTrain]))),
-  `out-of-sample RMSE` = sqrt(c(mean(SE_lm[-idTrain]), mean(SE_svc[-idTrain])))
+  `in-sample RMSE` = round(sqrt(c(mean(SE_lm[idTrain]), mean(SE_svc[idTrain]))), 3),
+  `out-of-sample RMSE` = round(sqrt(c(mean(SE_lm[-idTrain]), mean(SE_svc[-idTrain]))), 3)
 ))
 ```
 
-We notice a significant difference in both the in- and out-of-sample RMSE.
+We notice a significant difference in both RMSE between the models. On the training data, i.e., the in-sample RMSE, we observe and improvement by more than 50%. This is quite common since the SVC model has a higher flexibility. Therefore, it is very pleasing to see that even on the testing data, i.e., the out-of-sample RMSE, the SVC model still improves the RMSE by almost 30% compared to the linear model. 
 
 ## Meuse Data Set Example
 
@@ -298,7 +303,7 @@ Our goal is to model the log `cadmium` measurements using the following independ
 - `lime`, which is a 2-level factor indicating the presence of lime. 
 - `elev`, i.e. the relative elevation above the local river bed.
 
-This provides us a "cheap" model, i.e., the covariates can be obtained very cheaply, and we can regress our variable of interest on them.  
+This provides us a model with "cheap" covariates and we can regress our variable of interest on them.  
 
 ```{r meuse data and location of interest}
 df_meuse <- meuse[, c("dist", "lime", "elev")]
@@ -309,9 +314,9 @@ locs <- as.matrix(meuse[, c("x", "y")])
 
 ### Exploratory Data Analysis
 
-First, we plot the log Cadmium measurements at their respective locations. The color ranges from blue (high Cadmium measuremnets) to red (low Cadmium measurements).
+First, we plot the log Cadmium measurements at their respective locations. The color ranges from yellow (high Cadmium measurements) to black (low Cadmium measurements).
 
-```{r meuse data spatial plot, echo = FALSE, message=FALSE, warning=FALSE, eval = FALSE}
+```{r meuse data spatial plot, echo = FALSE, message=FALSE, warning=FALSE}
 # load meuse river outlines
 data("meuse.riv")
 # create spatial object to create spplot
@@ -320,10 +325,10 @@ coordinates(sp_meuse) <- ~ locs
 # visualize log Cadmium measurements along river
 spplot(
   sp_meuse, zcol = "l_cad", main = "Meuse River and Log Cadmium Measurements"
-  ) + layer(panel.lines(meuse.riv))
+  ) + latticeExtra::layer(panel.lines(meuse.riv))
 ```
 
-Generally, the values for `l_cad` are highest close to the river Meuse. However, there is some spatial clustering comparing the center of all observations to the Northern part. Therefore, we expect the `dist` covariate to be important. Omitting the spatial structure, we can also look at a `pairs` plot.
+Generally, the values for `l_cad` are highest close to the river Meuse. However, there is some spatial structure comparing the center of all observations to the Northern part. Therefore, we expect the `dist` covariate to be an important regressor. Omitting the spatial structure, we can also look at a `pairs` plot.
 
 ```{r meuse data pairs}
 pairs(df_meuse)
@@ -333,11 +338,11 @@ Indeed, we note linear relationships between `l_cad` on the one hand and `elev` 
 
 ### Linear Model
 
-As a baseline, we start with a linear model again.
+As a baseline, we start with a linear model:
 
 ```{r meuse linear model}
 fit_lm <- lm(l_cad ~ ., data = df_meuse)
-summary(fit_lm)
+coef(fit_lm)
 ```
 
 The residual analysis shows:
@@ -350,19 +355,20 @@ par(oldpar)
 
 The spatial distribution of the residuals is the following:
 
-```{r LM spatial residuals, echo=FALSE, eval = FALSE}
+```{r LM spatial residuals, echo=FALSE}
 # add residuals to spatial object
 sp_meuse$res_lm <- resid(fit_lm)
 # visualize linear model residuals along river
 spplot(sp_meuse, zcol = "res_lm",
-     main = "Meuse River and Residuals of Linear Model") + layer(panel.lines(meuse.riv))
+     main = "Meuse River and Residuals of Linear Model"
+  ) + latticeExtra::layer(panel.lines(meuse.riv))
 ```
 
-One can observe that there is a spatial clustering of the residuals. This motivates us to use an SVC model. 
+One can observe that there is a spatial structure in the residuals. This motivates us to use an SVC model. 
 
 ### SVC Model
 
-The call to estimate the SVC model is again quite similar to the `lm()` call from above. However, we specify further arguments for the MLE using the `control` argument. First, we are using an optimization over the profiled likelihood (`profileLik = TRUE`) and second, we apply parameter scaling (`parscale = TRUE`) in the numeric optimization. Please check the help file `help("SVC_mle_control")` for more details.
+The call to estimate the SVC model is again quite similar to the `lm()` call from above. However, we specify further arguments for the MLE using the `control` argument. First, we are using an optimization over the profiled likelihood (`profileLik = TRUE`) and second, we apply parameter scaling (`parscale = TRUE`) in the numeric optimization. Please check the corresponding help file `help("SVC_mle_control")` for more details.
 
 ```{r meuse SVC model, warning=FALSE}
 fit_svc <- SVC_mle(l_cad ~ ., data = df_meuse, locs = locs, 
@@ -373,51 +379,32 @@ fit_svc <- SVC_mle(l_cad ~ ., data = df_meuse, locs = locs,
 coef(fit_svc)
 ```
 
-The obtained mean coefficient values of the linear and SVC model are quite similar, but this doe not come as a surprise.
+The obtained mean coefficient values of the linear and SVC model are quite similar, but this does not come as a surprise.
 
-```{r meuse fixed effects}
+```{r meuse fixed effects, echo = FALSE}
 kable(t(data.frame(
-  cbind(`linear` = coef(fit_lm), `SVC`= coef(fit_svc))
+  round(cbind(`linear` = coef(fit_lm), `SVC`= coef(fit_svc)), 3)
 )))
 ```
 
 ### Predictions
 
-Additionaly to the `meuse` data the `sp` package also contains another data set called `meuse.grid` that contains a 40 by 40 meter spaced grid of the entire study area along the Meuse river. We can use the locations to predict the SVCs. However, the covariates `elev` and `lime` are missing. Therefore, we cannot predict the response. Again, the fitted SVC values are only the deviations from the mean. We observe that the SVC for `elev` is in fact constant.
+Additionally to the `meuse` data the `sp` package also contains another data set called `meuse.grid` that contains a 40 by 40 meter spaced grid of the entire study area along the Meuse river. We can use the locations to predict the SVCs. However, the covariates `elev` and `lime` are missing. Therefore, we cannot predict the response. Again, the fitted SVC values are only the deviations from the mean. We observe that the SVC for `elev` is in fact constant.
 
 ```{r varycoef predict locations}
 # study area
 data("meuse.grid")
 # prediction
 df_svc_pred <- predict(fit_svc, newlocs = as.matrix(meuse.grid[, c("x", "y")]))
-# outcome
-head(df_svc_pred)
-# transformation to a spatial points data frame
 colnames(df_svc_pred)[1:4] <- c("Intercept", "dist", "lime", "elev")
-
-kable(head(df_svc_pred))
+head(df_svc_pred)
 ```
 
-Here are the predicted SVCs for the entire study area, where we added the estimated mean to the deviations:
-
-```{r meuse data  plot SVCs, echo = FALSE, eval = FALSE}
-sp_svc_pred <- df_svc_pred 
-# make spatial data frame object
-coordinates(sp_svc_pred) <- ~ loc_1 + loc_2
-# visualize linear model residuals along river
-spplot(sp_svc_pred, main = "Spatial Deviations of SVCs") +
-    layer(panel.lines(meuse.riv))
-```
-
-We see spatial structures in the first three coefficients, and the last one for covariate `elev` is constant. Our method is capable to estimate constant coefficients within the MLE. Further, there exist selection methods to not only select the varying coefficients, but to also select the mean value, i.e., the fixed effect. 
+The attentive reader might have noticed that the `elev` column only contains 0. Therefore, there are no deviations and the respective coefficient is constant and our method is capable to estimate constant coefficients within the MLE. There exists a selection method to not only select the varying coefficients, but to also select the mean value, i.e., the fixed effect. Please refer to Dambon et al. (2022b) for further information.
 
 ## Conclusion
 
-I hope that this example was easy to follow and showed the possibilities of how to model SVCs. I will continue my work on `varycoef` to add new and helpful features. On Twitter, I (@JakobDambon) will use \#varycoef to announce updates. If there is a key feature missing or you have questions, please contact me by mailing to jakob.dambon (at) math.uzh.ch.
-
-*Kind regards,*
-
-*Jakob Dambon*
+SVC models are a powerful tool to analyze spatial data. With the R package `varycoef`, we provide an accessible and easy way to apply GP-based SVC models that is very close to the classical `lm` experience. If you have further questions or issues, please visit our [Github repository](https://github.com/jakobdambon/varycoef).
 
 
 ## References

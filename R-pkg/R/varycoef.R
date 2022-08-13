@@ -21,7 +21,7 @@
 #' predictor is obtained by the empirical best linear unbiased predictor.
 #' to give location-specific predictions. A detailed tutorial with examples is
 #' given in a vignette; call \code{vignette("example", package = "varycoef")}.
-#' We also refer to the original article Dambon et al. (2021a) which lays the
+#' We also refer to the original article Dambon et al. (2021) which lays the
 #' methodological foundation of this package.
 #'
 #'
@@ -37,7 +37,7 @@
 #' which is implemented via a gradient descent. The estimation of the shrinkage
 #' parameter is available using a \emph{model-based optimization} (MBO). Here,
 #' we use the framework by Bischl et al. (2017). The methodological foundation
-#' of the PMLE is described in Dambon et al. (2021b).
+#' of the PMLE is described in Dambon et al. (2022).
 #'
 #' @examples
 #' vignette("manual", package = "varycoef")
@@ -50,15 +50,16 @@
 #'    Optimization of Expensive Black-Box Functions},
 #'    ArXiv preprint \url{https://arxiv.org/abs/1703.03373}
 #'
-#'    Dambon, J. A., Sigrist, F., Furrer, R. (2021a)
+#'    Dambon, J. A., Sigrist, F., Furrer, R. (2021).
 #'    \emph{Maximum likelihood estimation of spatially varying coefficient
 #'    models for large data with an application to real estate price prediction},
 #'    Spatial Statistics 41 100470 \doi{10.1016/j.spasta.2020.100470}
 #'
-#'    Dambon, J. A., Sigrist, F., Furrer, R. (2021b).
+#'    Dambon, J. A., Sigrist, F., Furrer, R. (2022).
 #'    \emph{Joint Variable Selection of both Fixed and Random Effects for
 #'    Gaussian Process-based Spatially Varying Coefficient Models},
-#'    ArXiv Preprint \url{https://arxiv.org/abs/2101.01932}
+#'    International Journal of Geographical Information Science
+#'    \doi{10.1080/13658816.2022.2097684}
 #'
 #' @docType package
 #' @name varycoef

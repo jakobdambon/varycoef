@@ -71,7 +71,7 @@ Function to set up control parameters for
    then jointly selects fixed and random effects of the GP-based
    SVC model using a penalized maximum likelihood estimation (PMLE).
    In this function, one can set the parameters for the PMLE and
-   its optimization procedures (Dambon et al., 2021, <arXiv:2101.01932>).
+   its optimization procedures (Dambon et al., 2022).
 }
 \examples{
 # Initializing parameters and switching logLik to FALSE
@@ -90,10 +90,11 @@ Bischl, B., Richter, J., Bossek, J., Horn, D., Thomas, J.,
    Expensive Black-Box Functions},
    ArXiv preprint \url{https://arxiv.org/abs/1703.03373}
 
-   Dambon, J. A., Sigrist, F., Furrer, R. (2021).
+   Dambon, J. A., Sigrist, F., Furrer, R. (2022).
    \emph{Joint Variable Selection of both Fixed and Random Effects for
    Gaussian Process-based Spatially Varying Coefficient Models},
-   ArXiv preprint \url{https://arxiv.org/abs/2101.01932}
+   International Journal of Geographical Information Science
+   \doi{10.1080/13658816.2022.2097684}
 }
 \author{
 Jakob Dambon

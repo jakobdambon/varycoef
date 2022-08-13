@@ -1,5 +1,4 @@
-
-#' @title Extact Number of Observations
+#' @title Extract Number of Observations
 #'
 #' @description Method to extract the number of observations used in MLE for an \code{\link{SVC_mle}} object.
 #'

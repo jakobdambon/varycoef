@@ -1,7 +1,7 @@
 #' @title Extact Covariance Parameters
 #'
-#' Function to extract the covariance parameters from an \code{\link{SVC_mle}}
-#' or \code{\link{SVC_selection}}object.
+#' @description Function to extract the covariance parameters from an 
+#' \code{\link{SVC_mle}} or \code{\link{SVC_selection}}object.
 #'
 #' @param object \code{\link{SVC_mle}} or \code{\link{SVC_selection}} object
 #' @param ...    further arguments

@@ -2,7 +2,7 @@
 % Please edit documentation in R/nobs-SVC_mle.R
 \name{nobs.SVC_mle}
 \alias{nobs.SVC_mle}
-\title{Extact Number of Observations}
+\title{Extract Number of Observations}
 \usage{
 \method{nobs}{SVC_mle}(object, ...)
 }
