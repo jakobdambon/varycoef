@@ -22,7 +22,7 @@ prop_train <- 0.2
 With the R package `varycoef` we enable the user to analyze spatial data and in a simple, yet versatile way. The underlying idea are *spatially varying coefficients* (SVC) that extend the linear model 
 
 $$ y_i = x_i^{(1)} \beta_1 + ... + x_i^{(p)} \beta_p + \varepsilon_i$$
-by allowing the coefficients $\beta_j, j = 1, ..., p$ to vary over space. That is, we assume the following model: 
+by allowing the coefficients $\beta_j, j = 1, ..., p$ to vary over space. That is, for a location $s$ we assume the following model: 
 
 $$ y_i = x_i^{(1)} \beta_1(s) + ... + x_i^{(p)} \beta_p(s) + \varepsilon_i$$
 
@@ -32,7 +32,7 @@ In this article, we will show what SVC models are and how to define them. Afterw
 
 ### Disclaimer
 
-The analyses and results in this article are meant to introduce the package `varycoef` and **not** to write the a rigorous statistical analysis of a data set. As this article should make the usage of `varycoef` as simple as possible, we skip over some of the technical or mathematical details and in some cases abuse notation. For a rigorous definition, please refer to the resources below. Further, the model estimation is performed on rather small data sets to ease computation ($n < 200$). We recommend to apply SVC models, particularly with many coefficients, on larger data sets.
+The analyses and results in this article are meant to introduce the package `varycoef` and **not** to be a rigorous statistical analysis of a data set. As this article should make the usage of `varycoef` as simple as possible, we skip over some of the technical or mathematical details and in some cases abuse notation. For a rigorous definition, please refer to the resources below. Further, the model estimation is performed on rather small data sets to ease computation ($n < 200$). We recommend to apply SVC models, particularly with many coefficients, on larger data sets.
 
 ### Further References
 
@@ -43,6 +43,8 @@ Our package evolved over time and we present some highlights:
 - In [Dambon et al. (2022a)](https://doi.org/10.1186/s41937-021-00080-2) we present an in-depth analysis of Swiss real estate data using GP-based SVC models.
 
 - In [Dambon et al. (2022b)](https://doi.org/10.1080/13658816.2022.2097684) we introduce a variable selection method. This is not covered by this article.
+
+- For more information on Gaussian processes and their application on spatial data, please refer to chapter 9 of the ["STA330: Modeling Dependent Data" lecture notes](http://user.math.uzh.ch/furrer/download/sta330/script_sta330.pdf) by Reinhard Furrer.
 
 ### Preliminaries
 
@@ -69,7 +71,7 @@ devtools::install_github("jakobdambon/varycoef")
 
 Within the R package, you can use these resources: 
 
-```{r help and vignettes}
+```{r help and vignettes, warning=FALSE}
 # attach package
 library(varycoef)
 
@@ -80,7 +82,7 @@ help("varycoef")
 vignette("Introduction", package = "varycoef")
 ```
 
-You can find this article on the Github, too. We continue to add more material and examples  in the future.
+You can find this article on the Github repository, too. We continue to add more material and examples.
 
 ## Synthetic Data Example
 
@@ -91,7 +93,7 @@ Let's dive into the analysis of some synthetic data. To ease the visualization, 
 As mentioned before, an SVC model extends the linear model by allowing the coefficients to vary over space. Therefore, we can write:
 
 $$ y_i = x_i^{(1)} \beta_1(s) + ... + x_i^{(p)} \beta_p(s) + \varepsilon_i,$$
-for some location $s$ where $\beta_1(s)$n indicates the dependence of a coefficient on the space. The coefficients are defined by Gaussian processes, but we skip over this part for now and take a look at a data set that was sampled using the model above. In `varycoef`, a data set named `SVCdata` is provided:
+for some location $s$ where $\beta_j(s)$ indicates the dependence of the $j$th coefficient on the space. The coefficients are defined by Gaussian processes, but we skip over this part for now and take a look at a data set that was sampled using the model above. In `varycoef`, a data set named `SVCdata` is provided:
 
 ```{r synthetic data}
 str(SVCdata)
@@ -173,7 +175,7 @@ abline(h = 0, lty = 2, col = "grey")
 par(mfrow = c(1, 1))
 ```
 
-Compared to the output and residuals of the linear models, we immediately see that the residuals of the SVC model are smaller in range and do not have a spatial structure. They are both with respect to fitted values and locations distributed around 0 and homoscedastic.
+Compared to the output and residuals of the linear models, we immediately see that the residuals of the SVC model are smaller in range and do not have a spatial structure. They are both with respect to fitted values and locations distributed around zero and homoscedastic.
 
 ### Comparison of Models
 
@@ -183,11 +185,14 @@ We end this synthetic data example by comparing the linear with the SVC model. W
 
 We can compare the models by the log likelihood, Akaike's or the Bayesian information criterion (AIC and BIC, respectively). Again, the corresponding methods are available:
 
-```{r synthetic data  model fit, echo = FALSE}
+```{r synthetic data  model fit}
 kable(data.frame(
-  Model = c("linear", "SVC"), 
+  Model = c("linear", "SVC"),
+  # using method logLik
   `log Likelihood` = round(as.numeric(c(logLik(fit_lm), logLik(fit_svc))), 2), 
+  # using method AIC
   AIC = round(c(AIC(fit_lm), AIC(fit_svc)), 2), 
+  # using method BIC
   BIC = round(c(BIC(fit_lm), BIC(fit_svc)), 2)
 ))
 ```
@@ -226,11 +231,14 @@ legend("topright", legend = c("Intercept", "covariate x", "linear model", "SVC m
 We use the entire data set to compute the in- and out-of-sample rooted mean square error (RMSE) for the response for both the linear and SVC model. Here we rely on the `predict()` methods. Further, we can compare the predicted coefficients with the true coefficients provided in `SVCdata`, something that we usually cannot do. 
 
 ```{r synthetic data predictive performance}
+# using method predict with whole data and corresponding locations
 df_svc_pred <- predict(fit_svc, newdata = df, newlocs = df$locs)
+# combining mean values and deviations
 mat_coef_pred <- cbind(
   svc1_pred = coef(fit_svc)[1] + df_svc_pred[, 1], 
   svc2_pred = coef(fit_svc)[2] + df_svc_pred[, 2]
 )
+# plot
 matplot(x = df$locs, y = mat_coef_pred, 
         xlab = "Location", ylab = "Beta", 
         main = "Predicted vs Actual Coefficients",
@@ -257,9 +265,9 @@ Say we are interested in a particular position, like:
 (s_id <- sample(n, 1))
 ```
 
-The coordinate is $s_{`r s_id`} = `r df$locs[s_id]`$. We can extract the deviations $\eta_j(s)$ and simply add them to the model. We receive the following location specific model.
+The coordinate is $s_{`r s_id`} = `r round(df$locs[s_id], 2)`$. We can extract the deviations $\eta_j(s)$ and simply add them to the model. We receive the following location specific model.
 
-$$y = \beta_1(s_{`r s_id`}) + \beta_2(s_{`r s_id`})\cdot x + \varepsilon = \bigl(`r round(coef(fit_svc)[1], 2)`  `r round(df_svc_pred[s_id, 1], 2)`\bigr) + \bigl(`r  round(coef(fit_svc)[2], 2)`+ `r round(df_svc_pred[s_id, 2], 2)`\bigr)   \cdot x + \varepsilon = `r round(coef(fit_svc)[1] + df_svc_pred[s_id, 1], 2)` + `r  round(coef(fit_svc)[2] + df_svc_pred[s_id, 2], 2)`\bigr) \cdot x + \varepsilon$$
+$$y = \beta_1(s_{`r s_id`}) + \beta_2(s_{`r s_id`})\cdot x + \varepsilon = \bigl(`r round(coef(fit_svc)[1], 2)`  `r round(df_svc_pred[s_id, 1], 2)`\bigr) + \bigl(`r  round(coef(fit_svc)[2], 2)`+ `r round(df_svc_pred[s_id, 2], 2)`\bigr)   \cdot x + \varepsilon = `r round(coef(fit_svc)[1] + df_svc_pred[s_id, 1], 2)` + `r  round(coef(fit_svc)[2] + df_svc_pred[s_id, 2], 2)` \cdot x + \varepsilon$$
 The remaining comparison of the two model at the given location is as usual. Between the both models we see that the intercept of the linear model is larger and the coefficient of $x$ is smaller than the 
 SVC model's intercept and coefficient of $x$, respectively.
 
@@ -414,3 +422,5 @@ Dambon, J. A., Sigrist, F., Furrer, R. (2021) **Maximum likelihood estimation of
 Dambon, J.A., Fahrländer, S.S., Karlen, S. et al. (2022a) **Examining the vintage effect in hedonic pricing using spatially varying coefficients models: a case study of single-family houses in the Canton of Zurich**, Swiss Journal Economics Statistics 158(2). [doi:10.1186/s41937-021-00080-2](https://doi.org/10.1186/s41937-021-00080-2)
 
 Dambon, J. A., Sigrist, F., Furrer, R. (2022b) **Joint variable selection of both fixed and random effects for Gaussian process-based spatially varying coefficient models**, International Journal of Geographical Information Science [doi:10.1080/13658816.2022.2097684](https://doi.org/10.1080/13658816.2022.2097684)
+
+Furrer, R. (2022) **Modeling Dependent Data**, [Lecture notes](http://user.math.uzh.ch/furrer/download/sta330/script_sta330.pdf) accessed on August 15, 2022
