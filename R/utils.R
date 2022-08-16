@@ -168,6 +168,7 @@ GLS_chol.matrix <- function(R, X, y) {
 # str(Sy_tap)
 # # difference between tapered and untapered covariance matrices
 # Sy-Sy_tap
+#' @importFrom spam is.spam lower.tri.spam t.spam diag.spam
 Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
   n <- nrow(outer.W[[1]])
   q <- length(outer.W)
@@ -184,21 +185,21 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
         Cov * outer.W[[k]]
       )
     }
-
-    nug <- if (n == 1) {
-      x[2*q+1]
+    # adding the nugget by adding it to the diagonal
+    # former version created a diagonal matrix and added it which was slower.
+    if (n == 1) {
+      return(Sigma + x[2*q+1])
     } else {
-      diag(rep(x[2*q+1], n))
+      diag(Sigma) <- diag(Sigma) + x[2*q+1]
+      return(Sigma)
     }
-
-    return(Sigma + nug)
   } else {
     # With tapering computations are done on spam objects.
     # Specifically, due to their fixed structure and since we are only
     # pair-wise adding and multiplying, on the spam entries themselves
 
     stopifnot(
-      all(sapply(outer.W, is.spam))
+      all(sapply(outer.W, spam::is.spam))
     )
 
     # construct a sparse matrix with 0 values as future entries
@@ -216,19 +217,13 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
 
     options(spam.trivalues = TRUE)
 
-    nug <- if (n == 1) {
-      x[2*q+1]
-    } else {
-      spam::diag.spam(rep(x[2*q+1], n))
-    }
-
     # Sigma <- Sigma * taper
-    # add lower tri. cov-matrices up and mirror them to get full cov-matrix
-    # due to spam::nearest.dist design
+    # add lower tri. cov-matrices up and mirror them since we are using 
+    # and add diagonal (nugget variance) to get full cov-matrix
 
     return(spam::lower.tri.spam(Sigma) +
              spam::t.spam(Sigma) +
-             nug)
+             spam::diag.spam(rep(x[2*q+1], n)))
   }
 }
 
