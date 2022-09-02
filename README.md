@@ -1,5 +1,5 @@
-<img src="https://github.com/jakobdambon/varycoef/blob/master/docs/logo/logo.png?raw=true"
-     alt="GPBoost icon"
+<img src="https://github.com/jakobdambon/varycoef/blob/master/logo/logo.png?raw=true"
+     alt="varycoef icon"
      align = "right"
      width="30%" />
 
