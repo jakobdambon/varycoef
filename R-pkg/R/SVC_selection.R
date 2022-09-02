@@ -491,9 +491,10 @@ SVC_selection_control <- function(
 #'    of the whole SVC model on which the selection should be applied.
 #' @param mle.par   (\code{numeric(2*q+1)}) \cr
 #'    Numeric vector with estimated covariance parameters of unpenalized MLE.
-#' @param control   (\code{list}) \cr
+#' @param control   (\code{list} or \code{NULL}) \cr
 #'    List of control parameters for variable selection. Output of
-#'    \code{\link{SVC_selection_control}}.
+#'    \code{\link{SVC_selection_control}}. If \code{NULL} is given, the 
+#'    default values of \code{\link{SVC_selection_control}} are used.
 #' @param ...       Further arguments.
 #'
 #' @return Returns an object of class \code{SVC_selection}. It contains parameter estimates under PMLE and the optimization as well as choice of the shrinkage parameters.
@@ -512,20 +513,32 @@ SVC_selection_control <- function(
 SVC_selection <- function(
   obj.fun,
   mle.par,
-  control,
+  control = NULL,
   ...
 ) {
-
-  stopifnot(
-    class(obj.fun) == "SVC_obj_fun" |
-      is.numeric(mle.par)
-  )
 
   # dimensions
   n <- nrow(obj.fun$args$X)
   p <- ncol(obj.fun$args$X)
   q <- length(obj.fun$args$outer.W)
+  
+  # Error handling
+  if (class(obj.fun) == "SVC_obj_fun") {
+    stop("The obj.fun argument must be of class 'SVC_obj_fun', see help file.")
+  }
+  
+  if (!is.numeric(mle.par) | (length(mle.par) != 2*q+1)) {
+    stop(paste0(
+      "The mle.par argument must be a numeric vector of length ", 2*q+1, "!"
+    ))
+  }
+  
 
+  
+  if (is.null(control)) {
+    control <- SVC_selection_control()
+  }
+  
   # IC black-box function
   IC.obj <- function(lambda)
     do.call(PMLE_CD, list(
