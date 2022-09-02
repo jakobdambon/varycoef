@@ -4,10 +4,7 @@
 \alias{cov_par}
 \alias{cov_par.SVC_mle}
 \alias{cov_par.SVC_selection}
-\title{Extact Covariance Parameters
-
-Function to extract the covariance parameters from an \code{\link{SVC_mle}}
-or \code{\link{SVC_selection}}object.}
+\title{Extact Covariance Parameters}
 \usage{
 cov_par(...)
 
@@ -30,10 +27,8 @@ vector with covariance parameters with the following attributes:
 }
 }
 \description{
-Extact Covariance Parameters
-
-Function to extract the covariance parameters from an \code{\link{SVC_mle}}
-or \code{\link{SVC_selection}}object.
+Function to extract the covariance parameters from an 
+\code{\link{SVC_mle}} or \code{\link{SVC_selection}}object.
 }
 \author{
 Jakob Dambon

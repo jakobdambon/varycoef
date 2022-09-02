@@ -4,9 +4,9 @@
 
 ## About
 
-The R package `varycoef` is the software implementation of **Gaussian process-based spatially varying coefficient models** by [Dambon et al. (2021a)](https://www.sciencedirect.com/science/article/pii/S2211675320300646). It extends linear regression models such that the coefficients are depending on some coordinates in a `d` dimensional space, i.e., the coefficient `b_j` for a covariate `j` is depending on coordinates `s` and therefore of the form `b_j(s)`. These coefficients are modeled using Gaussian processes. In most applications, the coordinates `s` tend to be observation locations like longitude and latitude (see [Dambon et al. (2022)](https://sjes.springeropen.com/articles/10.1186/s41937-021-00080-2) as an example). However, the concept can be extended in the number of dimensions or, say, using observation time points to model time-varying coefficients.
+The R package `varycoef` is the software implementation of **Gaussian process-based spatially varying coefficient models** by [Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470). It extends linear regression models such that the coefficients are depending on some coordinates in a `d` dimensional space, i.e., the coefficient `b_j` for a covariate `j` is depending on coordinates `s` and therefore of the form `b_j(s)`. These coefficients are modeled using Gaussian processes. In most applications, the coordinates `s` tend to be observation locations like longitude and latitude (see [Dambon et al. (2022)](https://doi.org/10.1186/s41937-021-00080-2) as an example). However, the concept can be extended in the number of dimensions or, say, using observation time points to model time-varying coefficients.
 
-The method relies on maximum likelihood estimation. It has been optimized to work with large data sets by applying covariance tapering by [Furrer et al. (2006)](https://www.jstor.org/stable/27594195) if necessary and allows for a moderate number of spatially varying coefficients. The R package contains methods to estimate Gaussian process-based (spatially) varying coefficient models, (spatially) predict coefficients as well as the response, and variable selection methods. Latter are based on [Dambon et al. (2021b)](https://arxiv.org/abs/2101.01932).
+The method relies on maximum likelihood estimation. It has been optimized to work with large data sets by applying covariance tapering by [Furrer et al. (2006)](https://www.jstor.org/stable/27594195) if necessary and allows for a moderate number of spatially varying coefficients. The R package contains methods to estimate Gaussian process-based (spatially) varying coefficient models, (spatially) predict coefficients as well as the response, and variable selection methods. Latter are based on [Dambon et al. (2021b)](https://doi.org/10.1080/13658816.2022.2097684).
 
 ## Getting Started
 
@@ -20,7 +20,7 @@ for the latest version on this repository or download it from [CRAN](https://cra
 
 ## Model Assumptions
 
-**Note: The exact definition of the model is given in [Dambon et al. (2021a)](https://www.sciencedirect.com/science/article/pii/S2211675320300646).**
+**Note: The exact definition of the model is given in [Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470).**
 
 ### Linear Model
 
@@ -56,7 +56,10 @@ For a finite number of observations `n`, the model can be expressed as a so-call
 
 ## Examples
 
-We will add links to vignettes and further examples here very soon.
+The R package contains a vignette, which is also linked here: 
+
+- [01_Introduction](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/7-new-examples/examples/01_Introduction.html)
+
 
 ## Version History
 

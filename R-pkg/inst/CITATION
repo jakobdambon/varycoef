@@ -38,10 +38,10 @@ citEntry(
              person("Fabio", "Sigrist"),
              person("Reinhard", "Furrer")),
   title = "Joint Variable Selection of both Fixed and Random Effects for Gaussian Process-based Spatially Varying Coefficient Models",
-  journal = "ArXiv Preprint",
+  journal = "International Journal of Geographical Information Science",
   year = "2021",
-  url = "https://arxiv.org/abs/2101.01932",
-  textVersion = "Dambon, JA., Sigrist, F., Furrer, R. (2021) Joint Variable Selection of both Fixed and Random Effects for Gaussian Process-based Spatially Varying Coefficient Models, ArXiv Preprint arXiv:2101.01932"
+  url = "https://doi.org/10.1080/13658816.2022.2097684",
+  textVersion = "Dambon, JA., Sigrist, F., Furrer, R. (2021) Joint Variable Selection of both Fixed and Random Effects for Gaussian Process-based Spatially Varying Coefficient Models, International Journal of Geographical Information Science"
 )
 
 
