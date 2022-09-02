@@ -221,7 +221,7 @@ mat_coef <- cbind(
 matplot(
   x = df_train$locs, 
   y = mat_coef, pch = c(1, 2, 1, 2), col = c(1, 1, 2, 2), 
-  xlab = "Location", ylab = "Beta", main = "Estiamted Coefficients")
+  xlab = "Location", ylab = "Beta", main = "Estimated Coefficients")
 legend("topright", legend = c("Intercept", "covariate x", "linear model", "SVC model"), 
        pch = c(1, 2, 19, 19), col = c("grey", "grey", "black", "red"))
 ```
