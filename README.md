@@ -58,7 +58,7 @@ For a finite number of observations `n`, the model can be expressed as a so-call
 
 The R package contains a vignette, which is also linked here: 
 
-- [01_Introduction](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/tree/master/examples/01_Introduction.html)
+- [01_Introduction](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/blob/master/examples/01_Introduction.html)
 
 
 ## Version History
