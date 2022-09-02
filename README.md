@@ -1,4 +1,11 @@
-# `varycoef`: An R Package to Model Spatially Varying Coefficients using Gaussian Processes
+<img src="https://github.com/jakobdambon/varycoef/blob/master/docs/logo/logo.png?raw=true"
+     alt="GPBoost icon"
+     align = "right"
+     width="30%" />
+
+`varycoef`: An R Package to Model Spatially Varying Coefficients using Gaussian Processes
+================================================================================
+
 
 [![CRAN](http://www.r-pkg.org/badges/version/varycoef?color=blue)](http://cran.rstudio.com/package=varycoef) [![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](http://www.r-pkg.org/pkg/varycoef)
 
