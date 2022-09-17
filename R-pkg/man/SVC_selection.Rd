@@ -4,7 +4,7 @@
 \alias{SVC_selection}
 \title{SVC Model Selection}
 \usage{
-SVC_selection(obj.fun, mle.par, control, ...)
+SVC_selection(obj.fun, mle.par, control = NULL, ...)
 }
 \arguments{
 \item{obj.fun}{(\code{SVC_obj_fun}) \cr
@@ -16,9 +16,10 @@ of the whole SVC model on which the selection should be applied.}
 \item{mle.par}{(\code{numeric(2*q+1)}) \cr
 Numeric vector with estimated covariance parameters of unpenalized MLE.}
 
-\item{control}{(\code{list}) \cr
+\item{control}{(\code{list} or \code{NULL}) \cr
 List of control parameters for variable selection. Output of
-\code{\link{SVC_selection_control}}.}
+\code{\link{SVC_selection_control}}. If \code{NULL} is given, the 
+default values of \code{\link{SVC_selection_control}} are used.}
 
 \item{...}{Further arguments.}
 }

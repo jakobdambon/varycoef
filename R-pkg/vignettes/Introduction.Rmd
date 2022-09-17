@@ -57,7 +57,7 @@ Before we start, we want to give some prerequisites that you should know about i
 
 ### Set up
 
-The `varycoef` package is available via [CRAN](https://cran.r-project.org/web/packages/varycoef/index.html) or [Github](https://github.com/jakobdambon/varycoef). Latter one hosts the most recent version that is released to CRAN on a regular base.
+The `varycoef` package is available via [CRAN](https://cran.r-project.org/package=varycoef) or [Github](https://github.com/jakobdambon/varycoef). Latter one hosts the most recent version that is released to CRAN on a regular base.
 
 ```{r install, eval=FALSE}
 # install from CRAN

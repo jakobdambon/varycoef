@@ -6,12 +6,17 @@
 
 
 ## ---- help function to do MLE for SVC model ----
-#' @importFrom stats coef lm median var
+#' @importFrom stats coef lm.fit median var
 #' @importFrom optimParallel optimParallel
 #' @importFrom parallel clusterExport clusterEvalQ
 MLE_computation <- function(
     y, X, locs, W, control, optim.control
   ) {
+  
+  # set new options while recording old to reset on exit
+  oopts <- options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
+  on.exit(options(oopts))
+  
   ## -- set important dimensions ----
   # number random effects and fixed effects
   q <- dim(W)[2]
@@ -36,13 +41,12 @@ MLE_computation <- function(
     med_dist <- if (is.matrix(d)) {
       median(as.numeric(d))
     } else {
-      options(spam.trivalues=TRUE)
       median(lower.tri(d@entries))
     }
     # variance of response
     y_var <- var(y)
     # fixed effects estimates by ordinary least squares (OLS)
-    OLS_mu <- coef(lm(y~X-1))
+    OLS_mu <- coef(lm.fit(x = X, y = y))
   } else {
     med_dist <- y_var <- OLS_mu <- NULL
   }
@@ -66,9 +70,7 @@ MLE_computation <- function(
     outer.W <- lapply(1:q, function(k) {
       (W[, k]%o%W[, k]) * taper
     })
-
-    options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
-
+    
     Sigma1 <- Sigma_y(
       x = liu$init[id_cov],
       cov_func = cov.func,
@@ -102,7 +104,7 @@ MLE_computation <- function(
   mu.estimate <- if (control$mean.est == "GLS") {
     NULL
   } else { # Ordinary Least Squares
-    coef(lm(y~X-1))
+    coef(lm.fit(x = X, y = y))
   }
 
   # extract objective function

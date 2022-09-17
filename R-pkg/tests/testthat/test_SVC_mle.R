@@ -7,9 +7,17 @@ test_that("SVC_mle call creates correct objects", {
   id <- sample(length(SVCdata$locs), 50)
   
   ## SVC_mle call with matrix arguments
+  
+  # Test on the side: Internally, the spam.trivalues option is set to TRUE. 
+  # We check that it is set back to the original value after the call.
+  options(spam.trivalues = FALSE)
+  expect_identical(FALSE, getOption("spam.trivalues"))
+  
   fit1 <- with(SVCdata, SVC_mle(
     y[id], X[id, ], locs[id], 
     control = SVC_mle_control(profileLik = TRUE, cov.name = "mat32")))
+  
+  expect_identical(FALSE, getOption("spam.trivalues"))
   
   ## SVC_mle call with formula
   df <- with(SVCdata, data.frame(y = y[id], X = X[id, -1]))
