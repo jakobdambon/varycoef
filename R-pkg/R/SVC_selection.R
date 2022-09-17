@@ -523,7 +523,7 @@ SVC_selection <- function(
   q <- length(obj.fun$args$outer.W)
   
   # Error handling
-  if (class(obj.fun) == "SVC_obj_fun") {
+  if (is(obj.fun, "SVC_obj_fun")) {
     stop("The obj.fun argument must be of class 'SVC_obj_fun', see help file.")
   }
   
