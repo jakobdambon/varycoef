@@ -45,13 +45,9 @@ n2LL <- function(
   res <- y - X %*% mu
 
   ## quadratic form of residual, i.e., t(res) %*% Sigma^-1 %*% res
-  quad_res <- if (is.matrix(cholS)) {
-    as.numeric(crossprod(solve(t(cholS), res)))
-  } else {
-    as.numeric(crossprod(spam::forwardsolve(cholS, res,
-                                            transpose = TRUE,
-                                            upper.tri = TRUE)))
-  }
+  quad_res <- as.numeric(crossprod(
+    forwardsolve(cholS, res, transpose = TRUE, upper.tri = TRUE)
+  ))
 
   # n2LL as stated in paper Dambon et al. (2020) does not contain the
   # summand n*log(2 * pi), but it is needed to compute the actual LL
