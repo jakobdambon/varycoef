@@ -68,7 +68,7 @@ The R package contains a vignette, which is also linked here:
 - [01_Introduction](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/blob/master/examples/01_Introduction.html)
 
 
-## Version History
+## Version History-Pre GitHub Releases
 
 | Version | Functionality                                                                                                                                        | Prognosed Roll-out     |
 |----------------------|---------------------------------|-----------------|
