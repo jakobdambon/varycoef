@@ -35,15 +35,11 @@ MLE.cov.func <- function(
 #' Computes the GLS estimate using the formula:
 #' \deqn{\mu_{GLS} = (X^\top \Sigma^{-1} X)^{-1}X^\top \Sigma^{-1} y.}
 #' The computation is done depending on the input class of the Cholesky factor
-#' \code{R}. It relies on the classical \code{\link[base]{solve}} or on
-#' using \code{forwardsolve} and \code{backsolve} functions of package
-#' \code{spam}, see \code{\link[spam]{solve}}. This is much faster than
-#' computing the inverse of \eqn{\Sigma}, especially since we have to compute
-#' the Cholesky decomposition of \eqn{\Sigma} either way.
+#' \code{R}.
 #'
-#' @param R (\code{spam.chol.NgPeyton} or \code{matrix(n, n)}) \cr Cholesky factor of
-#' the covariance matrix \eqn{\Sigma}. If covariance tapering and sparse
-#' matrices are used, then the input is of class \code{spam.chol.NgPeyton}.
+#' @param R (\code{spam.chol.NgPeyton} or \code{matrix(n, n)}) \cr Cholesky 
+#' factor of the covariance matrix \eqn{\Sigma}. If covariance tapering and 
+#' sparse matrices are used, then the input is of class \code{spam.chol.NgPeyton}.
 #' Otherwise, \code{R} is the output of a standard \code{\link[base]{chol}},
 #' i.e., a simple \code{matrix}
 #' @param X (\code{matrix(n, p)}) \cr Data / design matrix.
@@ -53,7 +49,7 @@ MLE.cov.func <- function(
 #' @author Jakob Dambon
 #'
 #' @export
-#'
+#' @importFrom spam forwardsolve backsolve solve
 #' @examples
 #' # generate data
 #' n <- 10
@@ -74,32 +70,13 @@ MLE.cov.func <- function(
 #' ## check
 #' abs(mu - mu_mat)
 #' abs(mu - mu_spam)
-GLS_chol <- function(R, X, y) UseMethod("GLS_chol")
-
-#' @rdname GLS_chol
-#' @importFrom spam forwardsolve backsolve
-#' @export
-GLS_chol.spam.chol.NgPeyton <- function(R, X, y) {
-  # (X^T * Sigma^-1 * X)^-1
+GLS_chol <- function(R, X, y) {
+  # (X^T * Sigma^-1 * X)^-1 * (X^T * Sigma^-1 * y)
   solve(
-    crossprod(spam::forwardsolve(R, X))
-  ) %*%
-    # (X^T * Sigma^-1 * y)
-    crossprod(X, spam::backsolve(R, spam::forwardsolve(R, y)))
+    crossprod(forwardsolve(R, X)), 
+    crossprod(X, backsolve(R, forwardsolve(R, y)))
+  )
 }
-
-#' @rdname GLS_chol
-#' @export
-GLS_chol.matrix <- function(R, X, y) {
-  RiX <- solve(t(R), X)
-  # (X^T * Sigma^-1 * X)^-1
-  solve(
-    crossprod(RiX)
-  ) %*%
-    # (X^T * Sigma^-1 * y)
-    crossprod(RiX, solve(t(R), y))
-}
-
 
 # Covariance Matrix of GP-based SVC Model
 #
