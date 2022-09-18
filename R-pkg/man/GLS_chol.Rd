@@ -2,20 +2,14 @@
 % Please edit documentation in R/utils.R
 \name{GLS_chol}
 \alias{GLS_chol}
-\alias{GLS_chol.spam.chol.NgPeyton}
-\alias{GLS_chol.matrix}
 \title{GLS Estimate using Cholesky Factor}
 \usage{
 GLS_chol(R, X, y)
-
-\method{GLS_chol}{spam.chol.NgPeyton}(R, X, y)
-
-\method{GLS_chol}{matrix}(R, X, y)
 }
 \arguments{
-\item{R}{(\code{spam.chol.NgPeyton} or \code{matrix(n, n)}) \cr Cholesky factor of
-the covariance matrix \eqn{\Sigma}. If covariance tapering and sparse
-matrices are used, then the input is of class \code{spam.chol.NgPeyton}.
+\item{R}{(\code{spam.chol.NgPeyton} or \code{matrix(n, n)}) \cr Cholesky 
+factor of the covariance matrix \eqn{\Sigma}. If covariance tapering and 
+sparse matrices are used, then the input is of class \code{spam.chol.NgPeyton}.
 Otherwise, \code{R} is the output of a standard \code{\link[base]{chol}},
 i.e., a simple \code{matrix}}
 
@@ -30,11 +24,7 @@ A \code{numeric(p)} vector, i.e., the mean effects.
 Computes the GLS estimate using the formula:
 \deqn{\mu_{GLS} = (X^\top \Sigma^{-1} X)^{-1}X^\top \Sigma^{-1} y.}
 The computation is done depending on the input class of the Cholesky factor
-\code{R}. It relies on the classical \code{\link[base]{solve}} or on
-using \code{forwardsolve} and \code{backsolve} functions of package
-\code{spam}, see \code{\link[spam]{solve}}. This is much faster than
-computing the inverse of \eqn{\Sigma}, especially since we have to compute
-the Cholesky decomposition of \eqn{\Sigma} either way.
+\code{R}.
 }
 \examples{
 # generate data
