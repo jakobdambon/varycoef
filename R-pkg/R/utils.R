@@ -59,8 +59,8 @@ MLE.cov.func <- function(
 GLS_chol <- function(R, X, y) {
   # (X^T * Sigma^-1 * X)^-1 * (X^T * Sigma^-1 * y)
   solve(
-    crossprod(forwardsolve(R, X)), 
-    crossprod(X, backsolve(R, forwardsolve(R, y)))
+    crossprod(forwardsolve(R, X, transpose=T, upper.tri=T)), 
+    crossprod(X, backsolve(R, forwardsolve(R, y, transpose=T, upper.tri=T)))
   )
 }
 
@@ -178,7 +178,7 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
     }
 
     oopts <- options(spam.trivalues = TRUE)
-    on.exist(options(oopts))
+    on.exit(options(oopts))
     
     nug <- if (n == 1) {
       x[2*q+1]

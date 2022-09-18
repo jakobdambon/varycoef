@@ -53,10 +53,14 @@ test_that("MLE.cov.func gets the right covariance functions", {
 
 
 test_that("GLS_chol utility function", {
+  set.seed(123)
   n <- 1000
-  S <- diag(1:n)
+  D_spam <- spam::nearest.dist(
+    seq(0, 1, length.out = n),
+    delta = 0.2
+  )
   
-  cholS <- chol(S)
+  cholS <- chol(as.matrix(exp(-D) + diag(rep(0.1, n))))
   cholS_spam <- spam::chol.spam(as.spam(S))
   
   X <- matrix(1:(2*n), ncol = 2)
