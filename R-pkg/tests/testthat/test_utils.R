@@ -29,17 +29,11 @@ test_that("MLE.cov.func gets the right covariance functions", {
   expect_identical(f(x, theta = cp), spam::cov.exp(x, theta = cp))
   
   f <- MLE.cov.func("mat32")
-  expect_identical(f(x, theta = cp), spam::cov.mat(x, theta = c(cp, 3/2)))
-  # covariance parameter length must be 2
-  expect_error(f(x, theta = 1))
-  expect_error(f(x, theta = rep(1, 3)))
-  
+  expect_identical(f(x, theta = cp), spam::cov.mat32(x, theta = cp))
+
   f <- MLE.cov.func("mat52")
-  expect_identical(f(x, theta = cp), spam::cov.mat(x, theta = c(cp, 5/2)))
-  # covariance parameter length must be 2
-  expect_error(f(x, theta = 1))
-  expect_error(f(x, theta = rep(1, 3)))
-  
+  expect_identical(f(x, theta = cp), spam::cov.mat52(x, theta = cp))
+
   f <- MLE.cov.func("sph")
   expect_identical(f(x, theta = cp), spam::cov.sph(x, theta = cp))
   
@@ -55,4 +49,33 @@ test_that("MLE.cov.func gets the right covariance functions", {
   expect_identical(f(x), f2(x))
   
   expect_error(MLE.cov.func(2))
+})
+
+
+test_that("GLS_chol utility function", {
+  n <- 1000
+  S <- diag(1:n)
+  
+  cholS <- chol(S)
+  cholS_spam <- spam::chol.spam(as.spam(S))
+  
+  X <- matrix(1:(2*n), ncol = 2)
+  y <- matrix(rnorm(n), ncol = 1)
+  
+  # Check that we get the same: (X^T * Sigma^-1 * X)^-1 * (X^T * Sigma^-1 * y)
+  expect_equal(
+    solve( t(X) %*% solve(S) %*% X ) %*% (t(X) %*% solve(S) %*% y ),
+    GLS_chol(cholS, X, y)
+  )
+  
+  expect_equal(
+    solve( t(X) %*% solve(S) %*% X ) %*% (t(X) %*% solve(S) %*% y ),
+    GLS_chol(cholS_spam, X, y)
+  )
+  
+  # redundant check
+  expect_equal(
+    GLS_chol(cholS_spam, X, y),
+    GLS_chol(cholS, X, y)
+  )
 })

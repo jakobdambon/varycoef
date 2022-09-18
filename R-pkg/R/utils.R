@@ -1,20 +1,5 @@
-#' @importFrom spam cov.mat
-cov.mat32 <- function(h, theta) {
-  stopifnot(length(theta) == 2L)
-  # smoothness nu = 3/2
-  spam::cov.mat(h, theta = c(theta, 3/2))
-}
-
-#' @importFrom spam cov.mat
-cov.mat52 <- function(h, theta) {
-  stopifnot(length(theta) == 2L)
-  # smoothness nu = 5/2
-  spam::cov.mat(h, theta = c(theta, 5/2))
-}
-
-
 ## ---- help function to give back correct covariance function ----
-#' @importFrom spam cov.exp cov.sph cov.wend1 cov.wend2
+#' @importFrom spam cov.exp cov.sph cov.wend1 cov.wend2 cov.mat32 cov.mat52
 MLE.cov.func <- function(
     cov.name = c("exp", "mat32", "mat52", "sph", "wend1", "wend2")
   ) {
@@ -192,8 +177,9 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
       }
     }
 
-    options(spam.trivalues = TRUE)
-
+    oopts <- options(spam.trivalues = TRUE)
+    on.exist(options(oopts))
+    
     nug <- if (n == 1) {
       x[2*q+1]
     } else {

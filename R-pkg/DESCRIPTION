@@ -34,7 +34,7 @@ Imports:
     ParamHelpers,
     pbapply,
     smoof,
-    spam
+    spam (>= 2.9-0)
 Suggests:
     DiceKriging,
     knitr,
