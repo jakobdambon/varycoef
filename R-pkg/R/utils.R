@@ -48,6 +48,7 @@ MLE.cov.func <- function(
 #' @return A \code{numeric(p)} vector, i.e., the mean effects.
 #' @author Jakob Dambon
 #'
+#'
 #' @export
 #' @importFrom spam forwardsolve backsolve solve
 #' @examples
