@@ -1,9 +1,9 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.4
+Version: 0.3.5
 Authors@R: c(
-    person("Jakob A.", "Dambon", , "jakob.dambon@math.uzh.ch", role = c("aut", "cre"),
+    person("Jakob A.", "Dambon", , "jakob.dambon@stat.math.ethz.ch", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-5855-2017")),
     person("Fabio", "Sigrist", role = "ctb",
            comment = c(ORCID = "0000-0002-3994-2244")),
