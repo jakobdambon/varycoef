@@ -63,4 +63,6 @@
 #'
 #' @docType package
 #' @name varycoef
+#' @aliases varycoef-package
+#' @rdname varycoef
 NULL

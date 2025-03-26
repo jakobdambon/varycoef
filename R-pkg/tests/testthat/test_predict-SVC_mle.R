@@ -26,13 +26,13 @@ test_that("prediction functions works with formula and matrix calls", {
   pred_mat <- predict(fit_mat, newX = newX, newW = newX, newlocs = newlocs)
   pred_form <- predict(fit_form, newdata = newdata, newlocs = newlocs)
   
-  expect_identical(pred_mat, pred_form)
+  expect_equal(pred_mat, pred_form, tolerance = 1e-10)
   
   # only predicting SVCs 
   pred_mat <- predict(fit_mat, newlocs = newlocs)
   pred_form <- predict(fit_form, newlocs = newlocs)
   
-  expect_identical(pred_mat, pred_form)
+  expect_equal(pred_mat, pred_form, tolerance = 1e-10)
   # check warning for overwriting arguments
   expect_warning(
     predict(fit_form, newdata = newdata, newX = newX, newlocs = newlocs))

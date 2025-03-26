@@ -1,9 +1,9 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.4
+Version: 0.3.5
 Authors@R: c(
-    person("Jakob A.", "Dambon", , "jakob.dambon@math.uzh.ch", role = c("aut", "cre"),
+    person("Jakob A.", "Dambon", , "jakob.dambon@math.ethz.ch", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-5855-2017")),
     person("Fabio", "Sigrist", role = "ctb",
            comment = c(ORCID = "0000-0002-3994-2244")),
@@ -18,7 +18,8 @@ Description: Implements a maximum likelihood estimation (MLE) method for
     the method scales to large data. Further, it implements a joint
     variable selection of the fixed and random effects (Dambon et al.
     (2021b) <doi:10.1080/13658816.2022.2097684>). The package and its 
-    capabilities are described in (Dambon et al. (2021c) <arXiv:2106.02364>).
+    capabilities are described in (Dambon et al. (2021c)
+    <doi:10.48550/arXiv.2106.02364>).
 License: GPL-2
 URL: https://github.com/jakobdambon/varycoef
 BugReports: https://github.com/jakobdambon/varycoef/issues
@@ -48,5 +49,5 @@ Suggests:
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 7.3.2
 VignetteBuilder: knitr
