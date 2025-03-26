@@ -70,9 +70,11 @@ The R package contains a vignette, which is also linked here:
 
 ## Version History-Pre GitHub Releases
 
-| Version | Functionality                                                                                                                                        | Prognosed Roll-out     |
+| Version | Functionality                                                                                                                                        | Release Date           |
 |----------------------|---------------------------------|-----------------|
-| 0.3.3   | Removed some dependencies to `RandomFields`                                                                                                          | June 2022              |
+| 0.3.5   | Bringing back to CRAN after some failed UT in ATLAS                                                                                                  | 26th of March 2025     |
+| 0.3.4   |                                                                                                                                                      | 17th of September 2022 |
+| 0.3.3   | Removed some dependencies to `RandomFields`                                                                                                          | 1st of June 2022       |
 | 0.3.2   | Parscale option in SVC_mle_control                                                                                                                   | 19th of July 2021      |
 | 0.3.1   | New methods (summary output), pre JSS Submission                                                                                                     | 12th of May 2021       |
 | 0.3.0   | Joint variable selection method available on CRAN                                                                                                    | 13th of January 2021   |
