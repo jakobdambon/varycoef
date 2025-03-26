@@ -3,6 +3,7 @@
 \docType{package}
 \name{varycoef}
 \alias{varycoef}
+\alias{varycoef-package}
 \title{varycoef: Modeling Spatially Varying Coefficients}
 \description{
 This package offers functions to estimate and predict Gaussian process-based
@@ -68,6 +69,14 @@ Bischl, B., Richter, J., Bossek, J., Horn, D., Thomas, J.,
    Gaussian Process-based Spatially Varying Coefficient Models},
    International Journal of Geographical Information Science
    \doi{10.1080/13658816.2022.2097684}
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/jakobdambon/varycoef}
+  \item Report bugs at \url{https://github.com/jakobdambon/varycoef/issues}
+}
+
 }
 \author{
 Jakob Dambon

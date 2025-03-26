@@ -5,8 +5,8 @@ note <- sprintf("R package version %s", meta$Version)
 citHeader("To cite varycoef, please use one of the following:")
 
 
-citEntry(
-  entry = "article",
+bibentry(
+  bibtype = "article",
   author = c(person("Jakob A.", "Dambon"),
              person("Fabio", "Sigrist"),
              person("Reinhard", "Furrer")),
@@ -19,8 +19,8 @@ citEntry(
 
 
 
-citEntry(
-  entry = "article",
+bibentry(
+  bibtype = "article",
   author = c(person("Jakob A.", "Dambon"),
              person("Fabio", "Sigrist"),
              person("Reinhard", "Furrer")),
@@ -32,8 +32,8 @@ citEntry(
 )
 
 
-citEntry(
-  entry = "article",
+bibentry(
+  bibtype = "article",
   author = c(person("Jakob A.", "Dambon"),
              person("Fabio", "Sigrist"),
              person("Reinhard", "Furrer")),
