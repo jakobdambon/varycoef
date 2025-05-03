@@ -720,7 +720,7 @@ SVC_mle.formula <- function(
   } else {
     W <- as.matrix(stats::model.matrix(RE_formula, data = data))
   }
-  y <- as.numeric(data[, all.vars(formula)[1]])
+  y <- as.numeric(data[, all.vars(formula)[1], drop = TRUE])
 
   # call SVC_mle with default control settings if non are provided
   if (is.null(control)) {
