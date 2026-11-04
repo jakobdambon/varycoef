@@ -28,10 +28,12 @@ CD_mu <- function(
   # compute covariance matrix and Cholesky-decomp thereof
   C.mat <- Sigma_y(theta.k, obj.fun$args$cov_func, obj.fun$args$outer.W)
   R <- spam::chol(C.mat)
-  R.t.inv <- solve(t(R))
-  # transform
-  y.tilde <- R.t.inv %*% obj.fun$args$y
-  X.tilde <- R.t.inv %*% obj.fun$args$X
+  transformed <- spam::forwardsolve(
+    R,
+    cbind(obj.fun$args$y, obj.fun$args$X)
+  )
+  y.tilde <- transformed[, 1]
+  X.tilde <- transformed[, -1, drop = FALSE]
 
   # MLE / OLS estimate
   # mu.MLE <- coef(lm(y.tilde~X.tilde-1))

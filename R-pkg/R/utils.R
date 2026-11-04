@@ -91,13 +91,15 @@ GLS_chol.spam.chol.NgPeyton <- function(R, X, y) {
 #' @rdname GLS_chol
 #' @export
 GLS_chol.matrix <- function(R, X, y) {
-  RiX <- solve(t(R), X)
+  RiXY <- forwardsolve(t(R), cbind(X, y))
+  RiX <- RiXY[, seq_len(ncol(X)), drop = FALSE]
+  Riy <- RiXY[, ncol(RiXY)]
   # (X^T * Sigma^-1 * X)^-1
   solve(
     crossprod(RiX)
   ) %*%
     # (X^T * Sigma^-1 * y)
-    crossprod(RiX, solve(t(R), y))
+    crossprod(RiX, Riy)
 }
 
 
