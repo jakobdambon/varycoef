@@ -74,6 +74,29 @@ test_that("formula SVC_mle validates the response and row alignment", {
   )
 })
 
+test_that("formula SVC_mle extracts a tibble response as a vector", {
+  skip_if_not_installed("tibble")
+
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  df <- data.frame(y = SVCdata$y[id], x = SVCdata$X[id, 2])
+  tbl <- tibble::as_tibble(df)
+  locs <- SVCdata$locs[id]
+  control <- SVC_mle_control(
+    profileLik = TRUE,
+    cov.name = "mat32"
+  )
+
+  fit_df <- SVC_mle(y ~ x, data = df, locs = locs, control = control)
+  fit_tbl <- SVC_mle(y ~ x, data = tbl, locs = locs, control = control)
+
+  expect_equal(coef(fit_tbl), coef(fit_df), tolerance = 1e-8)
+  expect_equal(cov_par(fit_tbl), cov_par(fit_df), tolerance = 1e-8)
+  expect_equal(fitted(fit_tbl)$y.pred, fitted(fit_df)$y.pred,
+               tolerance = 1e-8)
+})
+
 test_that("matrix and formula fits agree on estimates and fitted values", {
   data(SVCdata)
   set.seed(123)
