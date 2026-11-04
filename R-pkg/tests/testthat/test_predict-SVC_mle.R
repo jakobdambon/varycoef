@@ -53,3 +53,56 @@ test_that("prediction functions works with formula and matrix calls", {
   expect_error(predict(fit_mat, newlocs = 1:2, compute.y.var = NA),
                "'compute.y.var' must be TRUE or FALSE")
 })
+
+test_that("prediction at observed locations matches saved fitted values", {
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  fit <- SVC_mle(
+    y = SVCdata$y[id],
+    X = SVCdata$X[id, , drop = FALSE],
+    locs = SVCdata$locs[id],
+    control = SVC_mle_control(
+      profileLik = TRUE,
+      cov.name = "mat32"
+    )
+  )
+
+  prediction <- predict(
+    fit,
+    newlocs = SVCdata$locs[id],
+    newX = SVCdata$X[id, , drop = FALSE],
+    newW = SVCdata$X[id, , drop = FALSE]
+  )
+  expect_equal(prediction$y.pred, fitted(fit)$y.pred, tolerance = 1e-8)
+  expect_equal(residuals(fit), SVCdata$y[id] - prediction$y.pred,
+               tolerance = 1e-8)
+})
+
+test_that("predictive response variances are finite and nonnegative", {
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  new_id <- setdiff(seq_along(SVCdata$locs), id)[1:3]
+  fit <- SVC_mle(
+    y = SVCdata$y[id],
+    X = SVCdata$X[id, , drop = FALSE],
+    locs = SVCdata$locs[id],
+    control = SVC_mle_control(
+      profileLik = TRUE,
+      cov.name = "mat32"
+    )
+  )
+  newX <- SVCdata$X[new_id, , drop = FALSE]
+  prediction <- predict(
+    fit,
+    newlocs = SVCdata$locs[new_id],
+    newX = newX,
+    newW = newX,
+    compute.y.var = TRUE
+  )
+
+  expect_length(prediction$y.var, 3L)
+  expect_true(all(is.finite(prediction$y.var)))
+  expect_true(all(prediction$y.var >= -1e-10))
+})

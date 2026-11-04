@@ -258,7 +258,7 @@ Sigma_y_y <- function(x, cov.func, X, newX) {
   Sigma <- matrix(0, ncol = nrow(X), nrow = nrow(newX))
 
   for (j in 1:p) {
-    Cov <- cov.func(c(x[2*(j-1) + 1:2], 0))
+    Cov <- cov.func(x[2*(j-1) + 1:2])
 
     Sigma <- Sigma + (
       Cov * (newX[, j] %o% X[, j])

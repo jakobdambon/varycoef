@@ -73,3 +73,29 @@ test_that("formula SVC_mle validates the response and row alignment", {
     "'data' must be a data frame"
   )
 })
+
+test_that("matrix and formula fits agree on estimates and fitted values", {
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  y <- SVCdata$y[id]
+  X <- SVCdata$X[id, , drop = FALSE]
+  locs <- SVCdata$locs[id]
+  df <- data.frame(y = y, X = X[, 2])
+  control <- SVC_mle_control(
+    profileLik = TRUE,
+    cov.name = "mat32"
+  )
+
+  fit_matrix <- SVC_mle(y, X, locs, control = control)
+  fit_formula <- SVC_mle(y ~ X, data = df, locs = locs, control = control)
+
+  expect_equal(unname(coef(fit_matrix)), unname(coef(fit_formula)),
+               tolerance = 1e-8)
+  expect_equal(unname(cov_par(fit_matrix)), unname(cov_par(fit_formula)),
+               tolerance = 1e-8)
+  expect_equal(fitted(fit_matrix)$y.pred, fitted(fit_formula)$y.pred,
+               tolerance = 1e-8)
+  expect_equal(residuals(fit_matrix), residuals(fit_formula),
+               tolerance = 1e-8)
+})
