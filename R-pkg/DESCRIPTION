@@ -26,23 +26,23 @@ BugReports: https://github.com/jakobdambon/varycoef/issues
 Depends:
     R (>= 3.5.0)
 Imports:
+    methods,
+    pbapply,
+    spam
+Suggests:
+    DiceKriging,
     glmnet,
     lhs,
-    methods,
+    knitr,
+    lattice,
+    latticeExtra,
     mlr,
     mlrMBO,
     optimParallel (>= 0.8-1),
     ParamHelpers,
-    pbapply,
-    smoof,
-    spam
-Suggests:
-    DiceKriging,
-    knitr,
-    lattice,
-    latticeExtra,
     parallel,
     rmarkdown,
+    smoof,
     sp,
     spData,
     testthat (>= 3.0.0)

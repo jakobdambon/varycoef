@@ -13,7 +13,6 @@ VB_pen <- function(x, X, cov_func, outer.W, taper) {
 }
 
 
-#' @importFrom glmnet glmnet coef.glmnet
 CD_mu <- function(
   theta.k,
   mle.par,
@@ -268,7 +267,6 @@ PMLE_CD <- function(
 
 
 
-#' @importFrom pbapply pbapply pboptions
 IC_opt_grid <- function(IC.obj, r.lambda, n.lambda) {
 
   l.lambda <- seq(log(r.lambda[1]), log(r.lambda[2]), length.out = n.lambda)
@@ -292,16 +290,13 @@ IC_opt_grid <- function(IC.obj, r.lambda, n.lambda) {
 
 
 
-#' @importFrom pbapply pbapply pboptions
-#' @importFrom ParamHelpers makeParamSet makeNumericVectorParam generateDesign
-#' @importFrom smoof makeSingleObjectiveFunction
-#' @importFrom mlr makeLearner
-#' @importFrom mlrMBO makeMBOControl setMBOControlTermination mbo makeMBOInfillCritEI
-#' @importFrom lhs maximinLHS
 IC_opt_MBO <- function(
   IC.obj, r.lambda, n.init, n.iter,
-  infill.crit = mlrMBO::makeMBOInfillCritEI()
+  infill.crit = NULL
 ) {
+  if (is.null(infill.crit)) {
+    infill.crit <- mlrMBO::makeMBOInfillCritEI()
+  }
 
   par.set <- ParamHelpers::makeParamSet(
     ParamHelpers::makeNumericVectorParam(
@@ -367,6 +362,8 @@ IC_opt_MBO <- function(
 #' @param method   (\code{character(1)}) \cr
 #'    Select optimization method for lambdas, i.e., shrinkage parameters.
 #'    Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.
+#'    MBO requires the optional packages \code{mlrMBO}, \code{mlr},
+#'    \code{ParamHelpers}, \code{smoof}, \code{lhs}, and \code{DiceKriging}.
 #' @param r.lambda (\code{numeric(2)}) \cr
 #'    Finite, positive, increasing lower and upper bounds for the shrinkage
 #'    parameters.
@@ -393,7 +390,8 @@ IC_opt_MBO <- function(
 #' @param parallel (\code{list} or \code{NULL}) \cr
 #'    Arguments for parallel optimization, as documented in
 #'    \code{\link[optimParallel]{optimParallel}}. If \code{NULL}, serial
-#'    optimization is used.
+#'    optimization is used. Parallel optimization requires the optional
+#'    package \code{optimParallel}.
 #' @param optim.args (\code{list}) \cr
 #'    List of further arguments of \code{\link[optimParallel]{optimParallel}},
 #'    such as the lower bounds.
@@ -537,7 +535,6 @@ SVC_selection_control <- function(
 #' @export
 #'
 #'
-#' @importFrom optimParallel optimParallel
 SVC_selection <- function(
   obj.fun,
   mle.par,
@@ -580,6 +577,17 @@ SVC_selection <- function(
          call. = FALSE)
   } else {
     control <- do.call(SVC_selection_control, control)
+  }
+
+  require_optional_dependencies("glmnet", "SVC variable selection")
+  if (!is.null(control$parallel)) {
+    require_optional_dependencies("optimParallel", "parallel optimization")
+  }
+  if (control$method == "MBO") {
+    require_optional_dependencies(
+      c("DiceKriging", "lhs", "mlr", "mlrMBO", "ParamHelpers", "smoof"),
+      "MBO lambda optimization"
+    )
   }
   
   # IC black-box function

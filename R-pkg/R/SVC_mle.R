@@ -7,7 +7,6 @@
 
 ## ---- help function to do MLE for SVC model ----
 #' @importFrom stats coef lm.fit median var
-#' @importFrom optimParallel optimParallel
 #' @importFrom parallel clusterExport clusterEvalQ
 MLE_computation <- function(
     y, X, locs, W, control, optim.control
@@ -16,6 +15,10 @@ MLE_computation <- function(
   # set new options while recording old to reset on exit
   oopts <- options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
   on.exit(options(oopts))
+
+  if (!is.null(control$parallel)) {
+    require_optional_dependencies("optimParallel", "parallel optimization")
+  }
   
   ## -- set important dimensions ----
   # number random effects and fixed effects
@@ -320,7 +323,9 @@ create_SVC_mle <- function(
 #' @param parallel  (\code{NULL} or \code{list}) \cr
 #'    If \code{NULL}, no parallelization is applied. If cluster has been
 #'    established, define arguments for parallelization with a list, see
-#'    documentation of \code{\link[optimParallel]{optimParallel}}. See Examples.
+#'    documentation of \code{\link[optimParallel]{optimParallel}}. Parallel
+#'    optimization requires the optional package \code{optimParallel}. See
+#'    Examples.
 #' @param init  (\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
 #'    Initial values for optimization procedure. If \code{NULL} is given, an
 #'    initial vector is calculated (see Details). Otherwise, the vector is
@@ -638,7 +643,7 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #' }
 #' @import spam
 #' @importFrom stats dist optim
-#' @importFrom optimParallel optimParallel
+
 #' @export
 SVC_mle <- function(...) UseMethod("SVC_mle")
 
@@ -746,4 +751,3 @@ SVC_mle.formula <- function(
   class(object) <- "SVC_mle"
   return(object)
 }
-

@@ -396,6 +396,22 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 }
 
 
+require_optional_dependencies <- function(packages, feature) {
+  missing <- packages[
+    !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
+  ]
+  if (length(missing)) {
+    stop(
+      sprintf(
+        "%s requires these optional packages: %s. Install them with install.packages().",
+        feature,
+        paste(missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+}
+
 
 # Preparation of Parameter Output
 #

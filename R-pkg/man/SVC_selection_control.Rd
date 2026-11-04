@@ -24,7 +24,9 @@ Select Information Criterion.}
 
 \item{method}{(\code{character(1)}) \cr
 Select optimization method for lambdas, i.e., shrinkage parameters.
-Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.}
+Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.
+MBO requires the optional packages \code{mlrMBO}, \code{mlr},
+\code{ParamHelpers}, \code{smoof}, \code{lhs}, and \code{DiceKriging}.}
 
 \item{r.lambda}{(\code{numeric(2)}) \cr
 Finite, positive, increasing lower and upper bounds for the shrinkage
@@ -59,7 +61,8 @@ the shrinkage parameter is defined as \eqn{\lambda_j := \lambda / |\theta_j|}.}
 \item{parallel}{(\code{list} or \code{NULL}) \cr
 Arguments for parallel optimization, as documented in
 \code{\link[optimParallel]{optimParallel}}. If \code{NULL}, serial
-optimization is used.}
+optimization is used. Parallel optimization requires the optional
+package \code{optimParallel}.}
 
 \item{optim.args}{(\code{list}) \cr
 List of further arguments of \code{\link[optimParallel]{optimParallel}},
