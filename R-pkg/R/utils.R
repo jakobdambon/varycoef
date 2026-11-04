@@ -398,6 +398,61 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
 }
 
 
+validate_svc_inputs <- function(y, X, locs, W = NULL) {
+  if (!is.numeric(y) || !is.null(dim(y)) || length(y) == 0L) {
+    stop("'y' must be a non-empty numeric vector.", call. = FALSE)
+  }
+  if (any(!is.finite(y))) {
+    stop("'y' must not contain missing or non-finite values.", call. = FALSE)
+  }
+
+  n <- length(y)
+  is_numeric_input <- function(x) {
+    is.numeric(x) ||
+      is.data.frame(x) && all(vapply(x, is.numeric, logical(1)))
+  }
+  as_numeric_matrix <- function(x, name) {
+    if (!is_numeric_input(x) ||
+        (!is.null(dim(x)) && !is.matrix(x) && !is.data.frame(x))) {
+      stop(sprintf("'%s' must be a numeric vector or matrix.", name),
+           call. = FALSE)
+    }
+    x <- as.matrix(x)
+    if (nrow(x) != n || ncol(x) < 1L) {
+      stop(sprintf("'%s' must have %d rows and at least one column.",
+                   name, n), call. = FALSE)
+    }
+    if (any(!is.finite(x))) {
+      stop(sprintf("'%s' must not contain missing or non-finite values.", name),
+           call. = FALSE)
+    }
+    x
+  }
+
+  X <- as_numeric_matrix(X, "X")
+  if (is.null(W)) {
+    W <- X
+  } else {
+    W <- as_numeric_matrix(W, "W")
+  }
+
+  if (!is_numeric_input(locs) ||
+      (!is.null(dim(locs)) && !is.matrix(locs) && !is.data.frame(locs))) {
+    stop("'locs' must be a numeric vector or matrix.", call. = FALSE)
+  }
+  locs <- as.matrix(locs)
+  if (nrow(locs) != n || ncol(locs) < 1L) {
+    stop(sprintf("'locs' must have %d rows and at least one column.", n),
+         call. = FALSE)
+  }
+  if (any(!is.finite(locs))) {
+    stop("'locs' must not contain missing or non-finite values.",
+         call. = FALSE)
+  }
+
+  list(y = as.numeric(y), X = X, locs = locs, W = W)
+}
+
 require_optional_dependencies <- function(
   packages,
   feature,

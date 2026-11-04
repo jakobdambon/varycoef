@@ -4,18 +4,19 @@
 #'
 #' @param object  (\code{SVC_mle}) \cr
 #'    Model obtained from \code{\link{SVC_mle}} function call.
-#' @param newlocs  (\code{NULL} or \code{matrix(n.new, 2)}) \cr
+#' @param newlocs  (\code{NULL}, numeric vector, or \code{matrix(n.new, d)}) \cr
 #'    If \code{NULL}, then function uses observed locations of model to estimate
-#'    SVCs. Otherwise, these are the new locations the SVCs are predicted for.
-#' @param newX  (\code{NULL} or \code{matrix(n.new, q)}) \cr
+#'    SVCs. Otherwise, these are finite numeric locations with the same number
+#'    of dimensions as the training locations.
+#' @param newX  (\code{NULL}, numeric vector, or finite numeric \code{matrix(n.new, p)}) \cr
 #'    If provided (together with \code{newW}), the function also returns the
 #'    predicted response variable.
-#' @param newW  (\code{NULL} or \code{matrix(n.new, p)}) \cr
+#' @param newW  (\code{NULL}, numeric vector, or finite numeric \code{matrix(n.new, q)}) \cr
 #'    If provided (together with \code{newX}), the function also returns the
 #'    predicted response variable.
 #' @param newdata (\code{NULL} or \code{data.frame(n.new, p)}) \cr
 #'    This argument can be used, when the \code{SVC_mle} function has been called
-#'    with an formula, see examples.
+#'    with a formula. It must have the same number of rows as \code{newlocs}.
 #' @param compute.y.var  (\code{logical(1)}) \cr
 #'    If \code{TRUE} and the response is being estimated, the predictive
 #'    variance of each estimate will be computed.
@@ -86,6 +87,11 @@ predict.SVC_mle <- function(
   compute.y.var = FALSE,
   ...
 ) {
+  if (!is.logical(compute.y.var) || length(compute.y.var) != 1L ||
+      is.na(compute.y.var)) {
+    stop("'compute.y.var' must be TRUE or FALSE.", call. = FALSE)
+  }
+
   # extract parameters
   mu <- coef(object)
   cov.par <- cov_par(object)
@@ -94,9 +100,10 @@ predict.SVC_mle <- function(
   q <- dim(as.matrix(object$MLE$call.args$W))[2]
   p <- dim(as.matrix(object$MLE$call.args$X))[2]
   n <- length(object$MLE$call.args$y)
-  locs <- object$MLE$call.args$locs
+  locs <- as.matrix(object$MLE$call.args$locs)
   tapering <- object$MLE$call.args$control$tapering
   dist_args <- object$MLE$call.args$control$dist
+  nloc.dim <- ncol(locs)
 
   # define distance matrices
   d <- do.call(
@@ -106,11 +113,28 @@ predict.SVC_mle <- function(
 
   # if no new locations are given, predict for training data
   if (is.null(newlocs)) {
-    newlocs <- object$MLE$call.args$locs
+    newlocs <- locs
     d_cross <- d
     n.new <- n
   } else {
+    numeric.data.frame <- is.data.frame(newlocs) &&
+      all(vapply(newlocs, is.numeric, logical(1)))
+    if ((!is.numeric(newlocs) && !numeric.data.frame) ||
+        (!is.null(dim(newlocs)) && !is.matrix(newlocs) &&
+          !is.data.frame(newlocs))) {
+      stop("'newlocs' must be a numeric vector or matrix.", call. = FALSE)
+    }
     newlocs <- as.matrix(newlocs)
+    if (nrow(newlocs) < 1L || ncol(newlocs) != nloc.dim) {
+      stop(sprintf(
+        "'newlocs' must have at least one row and %d location column(s).",
+        nloc.dim
+      ), call. = FALSE)
+    }
+    if (any(!is.finite(newlocs))) {
+      stop("'newlocs' must not contain missing or non-finite values.",
+           call. = FALSE)
+    }
     n.new <- nrow(newlocs)
     d_cross <- do.call(
       own_dist,
@@ -160,6 +184,13 @@ predict.SVC_mle <- function(
   # if newdata is given and formula is present in SVC_mle object, extract
   # newX and newW (and overwrite provided ones)
   if (!is.null(newdata)) {
+    if (!is.data.frame(newdata)) {
+      stop("'newdata' must be a data frame.", call. = FALSE)
+    }
+    if (nrow(newdata) != n.new) {
+      stop("'newdata' and 'newlocs' must have the same number of rows.",
+           call. = FALSE)
+    }
     if (!is.null(object$formula)) {
       if (!is.null(newX)) {
         warning("Formula and 'newdata' provided: 'newX' argument was overwritten!")
@@ -180,9 +211,31 @@ predict.SVC_mle <- function(
     }
   }
 
-  if (!is.null(newX) & !is.null(newW)) {
-    # Do dimensions for training and prediction data match?
-    stopifnot(q == ncol(newW), p == ncol(newX))
+  if (!is.null(newX) && !is.null(newW)) {
+    if (!is.numeric(newX) || !is.numeric(newW) ||
+        (!is.null(dim(newX)) && !is.matrix(newX)) ||
+        (!is.null(dim(newW)) && !is.matrix(newW))) {
+      stop("'newX' and 'newW' must be numeric vectors or matrices.",
+           call. = FALSE)
+    }
+    if (is.null(dim(newX))) {
+      newX <- matrix(newX, ncol = 1L)
+    }
+    if (is.null(dim(newW))) {
+      newW <- matrix(newW, ncol = 1L)
+    }
+    if (nrow(newX) != n.new || ncol(newX) != p) {
+      stop(sprintf("'newX' must have %d rows and %d columns.", n.new, p),
+           call. = FALSE)
+    }
+    if (nrow(newW) != n.new || ncol(newW) != q) {
+      stop(sprintf("'newW' must have %d rows and %d columns.", n.new, q),
+           call. = FALSE)
+    }
+    if (any(!is.finite(newX)) || any(!is.finite(newW))) {
+      stop("'newX' and 'newW' must not contain missing or non-finite values.",
+           call. = FALSE)
+    }
     y.pred <- apply(newW * eff, 1, sum) + newX %*% mu
 
     # computation of standard deviation fro each observation.
@@ -265,4 +318,3 @@ predict.SVC_mle <- function(
   row.names(out) <- as.character(row.names(out))
   return(out)
 }
-

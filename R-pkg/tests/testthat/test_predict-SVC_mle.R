@@ -38,4 +38,18 @@ test_that("prediction functions works with formula and matrix calls", {
     predict(fit_form, newdata = newdata, newX = newX, newlocs = newlocs))
   expect_warning(
     predict(fit_form, newdata = newdata, newW = newX, newlocs = newlocs))
+
+  expect_error(predict(fit_mat, newlocs = c(1, NA)), "'newlocs' must not contain")
+  expect_error(predict(fit_mat, newlocs = matrix(1:4, ncol = 2)),
+               "location column")
+  expect_error(predict(fit_mat, newX = matrix(1:3, ncol = 1),
+                       newW = newX, newlocs = 1:3),
+               "'newX' must have 3 rows and 2 columns")
+  expect_error(predict(fit_mat, newX = matrix(c(1, NA, 1, 1), ncol = 2),
+                       newW = matrix(1, nrow = 2, ncol = 2), newlocs = 1:2),
+               "'newX' and 'newW' must not contain")
+  expect_error(predict(fit_form, newdata = newdata, newlocs = 1:3),
+               "same number of rows")
+  expect_error(predict(fit_mat, newlocs = 1:2, compute.y.var = NA),
+               "'compute.y.var' must be TRUE or FALSE")
 })

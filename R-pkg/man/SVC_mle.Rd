@@ -24,20 +24,23 @@ SVC_mle(...)
 \item{...}{further arguments}
 
 \item{y}{(\code{numeric(n)}) \cr
-Response vector.}
+Finite response vector with one value per observation.}
 
 \item{X}{(\code{matrix(n, p)}) \cr
-Design matrix. Intercept has to be added manually.}
+Finite numeric design matrix with one row per observation. An intercept
+has to be added manually.}
 
 \item{locs}{(\code{matrix(n, d)}) \cr
-Locations in a \eqn{d}-dimensional space. May contain multiple
-observations at single location.}
+Finite numeric locations with one row per observation in a
+\eqn{d}-dimensional space. A vector represents one-dimensional
+locations. Multiple observations may share a location.}
 
 \item{W}{(\code{NULL} or \code{matrix(n, q)}) \cr
 If \code{NULL}, the same matrix as provided in \code{X} is used. This
 fits a full SVC model, i.e., each covariate effect is modeled with a mean
 and an SVC. In this case we have \eqn{p = q}. If optional matrix \code{W}
-is provided, SVCs are only modeled for covariates within matrix \code{W}.}
+is provided, it must be finite and have one row per observation; SVCs
+are modeled only for its columns.}
 
 \item{control}{(\code{list}) \cr
 Control paramaters given by \code{\link{SVC_mle_control}}.}

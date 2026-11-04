@@ -41,3 +41,35 @@ test_that("SVC_mle call creates correct objects", {
   expect_identical(fit2_2$formula, y ~ X)
   expect_identical(fit2_2$RE_formula, ~ 1)
 })
+
+test_that("SVC_mle validates matrix inputs before fitting", {
+  y <- c(1, 2, 3)
+  X <- cbind(1, c(0, 1, 2))
+  locs <- c(0, 1, 2)
+
+  expect_error(SVC_mle(y[-1], X, locs), "'X' must have 2 rows")
+  expect_error(SVC_mle(y, X[, 1, drop = FALSE], locs,
+                       W = matrix(1:2, ncol = 1)), "'W' must have 3 rows")
+  expect_error(SVC_mle(y, X, locs[-1]), "'locs' must have 3 rows")
+  expect_error(SVC_mle(c(1, NA, 3), X, locs), "'y' must not contain")
+  expect_error(SVC_mle(y, cbind(X, Inf), locs), "'X' must not contain")
+  expect_error(SVC_mle(y, X, c(0, NaN, 2)), "'locs' must not contain")
+})
+
+test_that("formula SVC_mle validates the response and row alignment", {
+  data <- data.frame(y = c(1, 2, 3), x = 1:3)
+  locs <- 1:3
+
+  expect_error(
+    SVC_mle(y ~ x, data = transform(data, y = c(1, NA, 3)), locs = locs),
+    "'y' must not contain"
+  )
+  expect_error(
+    SVC_mle(y ~ x, data = data, locs = locs[-1]),
+    "'locs' must have 3 rows"
+  )
+  expect_error(
+    SVC_mle(y ~ x, data = list(y = 1:3, x = 1:3), locs = locs),
+    "'data' must be a data frame"
+  )
+})
