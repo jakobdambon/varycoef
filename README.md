@@ -1,91 +1,98 @@
-<img src="https://github.com/jakobdambon/varycoef/blob/master/logo/logo.png?raw=true"
-     alt="varycoef icon"
-     align = "right"
-     width="30%" />
+<p align="right">
+  <img src="https://github.com/jakobdambon/varycoef/blob/master/logo/logo.png?raw=true"
+       alt="varycoef icon" width="180" />
+</p>
 
-`varycoef`: An R Package to Model Spatially Varying Coefficients using Gaussian Processes
-================================================================================
+# varycoef
 
+**Model spatially varying coefficients with Gaussian processes.**
 
-[![CRAN](http://www.r-pkg.org/badges/version/varycoef?color=blue)](http://cran.rstudio.com/package=varycoef) [![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](http://www.r-pkg.org/pkg/varycoef)
+[![CRAN](https://www.r-pkg.org/badges/version/varycoef?color=blue)](https://CRAN.R-project.org/package=varycoef)
+[![Downloads](https://cranlogs.r-pkg.org/badges/grand-total/varycoef?color=green)](https://cranlogs.r-pkg.org/)
 
 ## About
 
-The R package `varycoef` is the software implementation of **Gaussian process-based spatially varying coefficient models** by [Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470). It extends linear regression models such that the coefficients are depending on some coordinates in a `d` dimensional space, i.e., the coefficient `b_j` for a covariate `j` is depending on coordinates `s` and therefore of the form `b_j(s)`. These coefficients are modeled using Gaussian processes. In most applications, the coordinates `s` tend to be observation locations like longitude and latitude (see [Dambon et al. (2022)](https://doi.org/10.1186/s41937-021-00080-2) as an example). However, the concept can be extended in the number of dimensions or, say, using observation time points to model time-varying coefficients.
+`varycoef` fits Gaussian process-based spatially varying coefficient (SVC)
+models. It extends linear regression by allowing selected coefficients to vary
+over coordinates, such as geographic locations or time points. The package
+provides maximum likelihood estimation, prediction of coefficients and
+responses, covariance tapering for larger datasets, and joint variable
+selection.
 
-The method relies on maximum likelihood estimation. It has been optimized to work with large data sets by applying covariance tapering by [Furrer et al. (2006)](https://www.jstor.org/stable/27594195) if necessary and allows for a moderate number of spatially varying coefficients. The R package contains methods to estimate Gaussian process-based (spatially) varying coefficient models, (spatially) predict coefficients as well as the response, and variable selection methods. Latter are based on [Dambon et al. (2021b)](https://doi.org/10.1080/13658816.2022.2097684).
+The statistical methodology is described in
+[Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470) and
+[Dambon et al. (2021b)](https://doi.org/10.1080/13658816.2022.2097684).
+Covariance tapering follows
+[Furrer et al. (2006)](https://doi.org/10.1198/106186006X132178).
 
-## Getting Started
+## Installation
 
-To install it, run
+Install the released package from CRAN:
 
-```
-devtools::install_github("jakobdambon/varycoef")
-```
-
-for the latest version on this repository or download it from [CRAN](https://cran.r-project.org/web/packages/varycoef/index.html).
-
-## Model Assumptions
-
-**Note: The exact definition of the model is given in [Dambon et al. (2021a)](https://doi.org/10.1016/j.spasta.2020.100470).**
-
-### Linear Model
-
-Let `y` be the response vector, let `X` be the covariate matrix, and let `xi` be the error term sampled from a zero-mean normal distribution with variance `s2`. Then the linear model is given by
-
-```
-y = Xb + xi
+```r
+install.packages("varycoef")
 ```
 
-with coefficient vector `b`. The coefficients are also called *fixed effects*.
+To install the latest development version from GitHub:
 
-### Spatially Varying Coefficients
-
-We now allow the coefficients to vary from their respective mean. Let `e(s)` contain the location-dependent differences. In a first step, with some slight abuse of notation, the linear model from above is extended by:
-
-```
-y = X(b + e(s)) + xi
+```r
+install.packages("remotes")
+remotes::install_github("jakobdambon/varycoef", subdir = "R-pkg")
 ```
 
-Note that not all coefficients necessarily must be varying. Therefore, we introduce a second covariate matrix `W` to specify which coefficients are spatially varying. In the case where all coefficients are varying, we have `W = X`. Again with some abuse of notation, we have the SVC model:
+## Model
 
-```
-y = Xb + We(s) + xi
-```
+Let \(y\) be the response, \(X\) the fixed-effect design matrix, and \(W\) the
+design matrix for coefficients that vary with location \(s\). The model is
 
-### Gaussian Process-based Coefficients
+$$
+y = X\beta + W e(s) + \xi,
+$$
 
-We assume that the spatially varying coefficients are defined by Gaussian processes. That is, the deviations per covariate `e_k(s)` are defined as a zero-mean Gaussian process defined by some covariance function `c(d, par)` that models the spatial dependence between observations using the pairwise distances. Each coefficient is parameterized by a tuple of parameters `par` that consists of a range and variance. One main assumption of the model is that the individual coefficients per covariate, i.e., the individual Gaussian processes, are mutually independent and independent of the error.
+where \(\beta\) contains the fixed effects, \(e(s)\) contains
+location-dependent deviations, and \(\xi\) is independent Gaussian noise.
+Each varying coefficient is modeled as a Gaussian process. Set \(W = X\) when
+all coefficients vary; use a different \(W\) to select which coefficients
+vary.
 
-### Connection to Mixed Effect Models
+See the package
+[Introduction vignette](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/blob/master/examples/01_Introduction.html)
+for a worked example and model details.
 
-For a finite number of observations `n`, the model can be expressed as a so-called mixed effect model. That is, using the covariance functions of the Gaussian processes and the distance matrix of the observations, we can express each `e_k(s)` as a multivariate, zero-mean normal distribution. Another common name for these effects are random effects. Together with the fixed effects from an ordinary linear model, we receive a  so-called mixed effect model. The assumption of mutual independence between the Gaussian allows an easy construction of the joint covariance matrix `S_y` of the response `y`. 
+## Version 0.4.0
 
-## Examples
+The 0.4.0 development version focuses on more robust input validation,
+improved covariance calculations, expanded regression tests, and reduced
+required dependencies for model fitting. See the [0.4.0 release notes](R-pkg/NEWS.md).
 
-The R package contains a vignette, which is also linked here: 
+The [CRAN-versus-development benchmark article](docs/index.md) describes the
+comparison with CRAN 0.3.6, including the synthetic-data design, tapered and
+untapered runtime results, numerical agreement, and coefficient/response
+figures.
 
-- [01_Introduction](https://htmlpreview.github.io/?https://github.com/jakobdambon/varycoef/blob/master/examples/01_Introduction.html)
+## Version history
 
+| Version | Highlights | Release date |
+|---|---|---|
+| 0.4.0 | Improved validation and covariance calculations; expanded tests; lighter core dependencies. | In preparation |
+| 0.3.5 | Returned to CRAN after resolving testing issues. | 26 March 2025 |
+| 0.3.4 |  | 17 September 2022 |
+| 0.3.3 | Removed some dependencies on `RandomFields`. | 1 June 2022 |
+| 0.3.2 | Added the `parscale` option to `SVC_mle_control`. | 19 July 2021 |
+| 0.3.1 | Added summary output and other methods. | 12 May 2021 |
+| 0.3.0 | Added joint variable selection. | 13 January 2021 |
+| 0.2.10 | Added `optimParallel` support and citation information. | 23 February 2020 |
+| 0.2.9 | Final release before the package returned to CRAN. | 10 October 2019 |
+| 0.2.8 | Revisions for CRAN submission. | 8 October 2019 |
+| 0.2.7 | Added summary, printing, plotting, and other `SVC_mle` methods. | 16 September 2019 |
+| 0.2.6 | Added predictive variance. | 5 September 2019 |
+| 0.2.5 | Improved handling of multiple observations at locations. | 10 July 2019 |
+| 0.2.4 | Added `SVC_mle.control` and updated the vignette. | 10 July 2019 |
+| 0.2.3 | Added profile likelihood and coefficient/covariance extraction functions. | 10 July 2019 |
+| 0.2.2 | Fixed multiple observations at locations; added residuals and fitted methods. | 5 June 2019 |
+| 0.2.1 | Enabled covariance tapering. | 23 April 2019 |
+| 0.2.0 | Separated fixed and random effects. | 12 April 2019 |
 
-## Version History-Pre GitHub Releases
+## Acknowledgements
 
-| Version | Functionality                                                                                                                                        | Release Date           |
-|----------------------|---------------------------------|-----------------|
-| 0.3.5   | Bringing back to CRAN after some failed UT in ATLAS                                                                                                  | 26th of March 2025     |
-| 0.3.4   |                                                                                                                                                      | 17th of September 2022 |
-| 0.3.3   | Removed some dependencies to `RandomFields`                                                                                                          | 1st of June 2022       |
-| 0.3.2   | Parscale option in SVC_mle_control                                                                                                                   | 19th of July 2021      |
-| 0.3.1   | New methods (summary output), pre JSS Submission                                                                                                     | 12th of May 2021       |
-| 0.3.0   | Joint variable selection method available on CRAN                                                                                                    | 13th of January 2021   |
-| 0.2.10  | parallelization using `optimParallel`, citation info, orcID                                                                                          | 23rd of February 2020  |
-| 0.2.9   | Final CRAN version                                                                                                                                   | 10th of October 2019   |
-| 0.2.8   | Revisions for CRAN submission                                                                                                                        | 8th of October 2019    |
-| 0.2.7   | add summary, printing, plotting functions, and other methods for `SVC_mle` objects                                                                   | 16th of September 2019 |
-| 0.2.6   | predictive variance                                                                                                                                  | 5th of September 2019  |
-| 0.2.5   | new handling of multiple observations                                                                                                                | 10th of July 2019      |
-| 0.2.4   | add SVC_mle.control for SVC_mle object, update vignette                                                                                              | 10th of July 2019      |
-| 0.2.3   | add profile LL MLE, add functions to extract coefs and covariance parameters                                                                         | 10th of July 2019      |
-| 0.2.2   | BUGFIX: Mulitple Observations at locations. New residuals and fitted methods for SVC_mle, SVC_mle with formula call, warning on call without control | 5th of June 2019       |
-| 0.2.1   | enable tapering                                                                                                                                      | 23rd of April 2019     |
-| 0.2.0   | Seperate fixed and random effects                                                                                                                    | 12th of April 2019     |
+Selected improvements and code enhancements in this package were developed with assistance from GitHub Copilot. All AI-assisted contributions were reviewed, tested, and validated by the package maintainer.
