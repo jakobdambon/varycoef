@@ -69,7 +69,7 @@ MLE_computation <- function(
     taper <-NULL
     outer.W <- lapply(1:q, function(k) W[, k]%o%W[, k])
   } else {
-    taper <- get_taper(control$cov.name, d, control$taper)
+    taper <- get_taper(control$cov.name, d, control$tapering)
     outer.W <- lapply(1:q, function(k) {
       (W[, k]%o%W[, k]) * taper
     })

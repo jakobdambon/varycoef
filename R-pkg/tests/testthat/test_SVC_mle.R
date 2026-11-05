@@ -97,6 +97,39 @@ test_that("formula SVC_mle extracts a tibble response as a vector", {
                tolerance = 1e-8)
 })
 
+test_that("SVC_mle applies the configured covariance taper", {
+  data(SVCdata)
+  id <- seq_len(30)
+  tapering <- 2
+  expected_warning <- NULL
+  fit <- withCallingHandlers(
+    SVC_mle(
+      y = SVCdata$y[id],
+      X = SVCdata$X[id, , drop = FALSE],
+      locs = SVCdata$locs[id],
+      control = SVC_mle_control(
+        profileLik = TRUE,
+        cov.name = "mat32",
+        tapering = tapering,
+        init = c(0.2, 0.5, 0.2, 0.5, 0.2),
+        lower = rep(1e-6, 5L),
+        upper = rep(Inf, 5L),
+        hessian = FALSE
+      )
+    ),
+    warning = function(w) {
+      if (grepl("MLE without Hessian", conditionMessage(w), fixed = TRUE)) {
+        expected_warning <<- conditionMessage(w)
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+
+  expect_match(expected_warning, "MLE without Hessian")
+  expect_identical(attr(cov_par(fit), "tapering"), tapering)
+  expect_true(all(is.finite(coef(fit))))
+})
+
 test_that("matrix and formula fits agree on estimates and fitted values", {
   data(SVCdata)
   set.seed(123)

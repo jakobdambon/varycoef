@@ -1,9 +1,9 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.5
+Version: 0.4.0
 Authors@R: c(
-    person("Jakob A.", "Dambon", , "jakob.dambon@math.ethz.ch", role = c("aut", "cre"),
+    person("Jakob A.", "Dambon", , "varycoef@dambon.me", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-5855-2017")),
     person("Fabio", "Sigrist", role = "ctb",
            comment = c(ORCID = "0000-0002-3994-2244")),
@@ -45,7 +45,8 @@ Suggests:
     smoof,
     sp,
     spData,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    tibble
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true

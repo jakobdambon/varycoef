@@ -210,7 +210,7 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
     # if q > 1, build covariance matrix using components of other GPs
     if (q > 1) {
       for (k in 2:q) {
-        Cov <- do.call(cov_func, list(c(x[2*(k-1) + 1:2], 0)))
+        Cov <- cov_func(x[2*(k-1) + 1:2])
 
         Sigma <- Sigma + (Cov * outer.W[[k]])
       }
