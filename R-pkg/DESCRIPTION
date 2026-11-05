@@ -1,9 +1,9 @@
 Type: Package
 Package: varycoef
 Title: Modeling Spatially Varying Coefficients
-Version: 0.3.5
+Version: 0.4.0
 Authors@R: c(
-    person("Jakob A.", "Dambon", , "jakob.dambon@math.ethz.ch", role = c("aut", "cre"),
+    person("Jakob A.", "Dambon", , "varycoef@dambon.me", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-5855-2017")),
     person("Fabio", "Sigrist", role = "ctb",
            comment = c(ORCID = "0000-0002-3994-2244")),
@@ -26,26 +26,27 @@ BugReports: https://github.com/jakobdambon/varycoef/issues
 Depends:
     R (>= 3.5.0)
 Imports:
+    methods,
+    pbapply,
+    spam
+Suggests:
+    DiceKriging,
     glmnet,
     lhs,
-    methods,
+    knitr,
+    lattice,
+    latticeExtra,
     mlr,
     mlrMBO,
     optimParallel (>= 0.8-1),
     ParamHelpers,
-    pbapply,
-    smoof,
-    spam
-Suggests:
-    DiceKriging,
-    knitr,
-    lattice,
-    latticeExtra,
     parallel,
     rmarkdown,
+    smoof,
     sp,
     spData,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    tibble
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true

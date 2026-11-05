@@ -13,7 +13,6 @@ VB_pen <- function(x, X, cov_func, outer.W, taper) {
 }
 
 
-#' @importFrom glmnet glmnet coef.glmnet
 CD_mu <- function(
   theta.k,
   mle.par,
@@ -29,10 +28,12 @@ CD_mu <- function(
   # compute covariance matrix and Cholesky-decomp thereof
   C.mat <- Sigma_y(theta.k, obj.fun$args$cov_func, obj.fun$args$outer.W)
   R <- spam::chol(C.mat)
-  R.t.inv <- solve(t(R))
-  # transform
-  y.tilde <- R.t.inv %*% obj.fun$args$y
-  X.tilde <- R.t.inv %*% obj.fun$args$X
+  transformed <- spam::forwardsolve(
+    R,
+    cbind(obj.fun$args$y, obj.fun$args$X)
+  )
+  y.tilde <- transformed[, 1]
+  X.tilde <- transformed[, -1, drop = FALSE]
 
   # MLE / OLS estimate
   # mu.MLE <- coef(lm(y.tilde~X.tilde-1))
@@ -106,17 +107,27 @@ CD_theta <- function(
   }
 
   # PMLE: use last known theta.k as initial value
-  PMLE <- do.call(
-    what = optimParallel::optimParallel,
-    args = c(
-      list(
-        par = theta.k,
-        fn = pl,
-        parallel = parallel.control
-      ),
-      optim.args
+  PMLE <- if (is.null(parallel.control)) {
+    do.call(
+      stats::optim,
+      c(
+        list(par = theta.k, fn = pl, method = "L-BFGS-B"),
+        optim.args
+      )
     )
-  )
+  } else {
+    do.call(
+      optimParallel::optimParallel,
+      c(
+        list(
+          par = theta.k,
+          fn = pl,
+          parallel = parallel.control
+        ),
+        optim.args
+      )
+    )
+  }
 
   # return covariance parameters theta.k+1
   PMLE$par
@@ -258,7 +269,6 @@ PMLE_CD <- function(
 
 
 
-#' @importFrom pbapply pbapply pboptions
 IC_opt_grid <- function(IC.obj, r.lambda, n.lambda) {
 
   l.lambda <- seq(log(r.lambda[1]), log(r.lambda[2]), length.out = n.lambda)
@@ -282,16 +292,13 @@ IC_opt_grid <- function(IC.obj, r.lambda, n.lambda) {
 
 
 
-#' @importFrom pbapply pbapply pboptions
-#' @importFrom ParamHelpers makeParamSet makeNumericVectorParam generateDesign
-#' @importFrom smoof makeSingleObjectiveFunction
-#' @importFrom mlr makeLearner
-#' @importFrom mlrMBO makeMBOControl setMBOControlTermination mbo makeMBOInfillCritEI
-#' @importFrom lhs maximinLHS
 IC_opt_MBO <- function(
   IC.obj, r.lambda, n.init, n.iter,
-  infill.crit = mlrMBO::makeMBOInfillCritEI()
+  infill.crit = NULL
 ) {
+  if (is.null(infill.crit)) {
+    infill.crit <- mlrMBO::makeMBOInfillCritEI()
+  }
 
   par.set <- ParamHelpers::makeParamSet(
     ParamHelpers::makeNumericVectorParam(
@@ -357,29 +364,36 @@ IC_opt_MBO <- function(
 #' @param method   (\code{character(1)}) \cr
 #'    Select optimization method for lambdas, i.e., shrinkage parameters.
 #'    Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.
+#'    MBO requires the optional packages \code{mlrMBO}, \code{mlr},
+#'    \code{ParamHelpers}, \code{smoof}, \code{lhs}, and \code{DiceKriging}.
 #' @param r.lambda (\code{numeric(2)}) \cr
-#'    Range of lambdas, i.e., shrinkage parameters.
+#'    Finite, positive, increasing lower and upper bounds for the shrinkage
+#'    parameters.
 #' @param n.lambda (\code{numeric(1)}) \cr
-#'    If grid method is selected, number of lambdas per side of grid.
+#'    If the grid method is selected, the positive integer number of values
+#'    per side of the grid.
 #' @param n.init   (\code{numeric(1)}) \cr
-#'    If MBO method is selected, number of initial values for surrogate model.
+#'    If the MBO method is selected, the integer number of initial design
+#'    points; at least three are required.
 #' @param n.iter   (\code{numeric(1)}) \cr
-#'    If MBO method is selected, number of iteration steps of surrogate models.
+#'    If the MBO method is selected, the positive integer number of
+#'    surrogate-model iterations.
 #' @param CD.conv  (\code{list(3)}) \cr
-#'    List containing the convergence conditions, i.e.,
-#'    first entry is the maximum number of iterations,
-#'    second value is the relative change necessary to stop iteration,
-#'    third is logical to toggle if relative change in log likelihood
-#'    (\code{TRUE}) or rather the parameters themselves (\code{FALSE})
-#'    is the criteria for convergence.
+#'    Named list with positive integer \code{N}, finite positive \code{delta},
+#'    and logical \code{logLik} elements. \code{N} is the maximum number of
+#'    coordinate-descent iterations; \code{delta} is the relative convergence
+#'    threshold; \code{logLik} selects convergence based on log-likelihood
+#'    (\code{TRUE}) or parameter values (\code{FALSE}).
 #' @param hessian  (\code{logical(1)}) \cr
 #'    If \code{TRUE}, Hessian will be computed for final model.
 #' @param adaptive (\code{logical(1)}) \cr
 #'    If \code{TRUE}, adaptive LASSO is executed, i.e.,
 #'    the shrinkage parameter is defined as \eqn{\lambda_j := \lambda / |\theta_j|}.
-#' @param parallel (\code{list}) \cr
-#'    List with arguments for parallelization,
-#'    see documentation of \code{\link[optimParallel]{optimParallel}}.
+#' @param parallel (\code{list} or \code{NULL}) \cr
+#'    Arguments for parallel optimization, as documented in
+#'    \code{\link[optimParallel]{optimParallel}}. If \code{NULL}, serial
+#'    optimization is used. Parallel optimization requires the optional
+#'    package \code{optimParallel}.
 #' @param optim.args (\code{list}) \cr
 #'    List of further arguments of \code{\link[optimParallel]{optimParallel}},
 #'    such as the lower bounds.
@@ -425,45 +439,59 @@ SVC_selection_control <- function(
   optim.args = list()
 ) {
 
-  # check r.lambda
-  stopifnot(
-    length(r.lambda) == 2 |
-      r.lambda[1] > 0 |
-      r.lambda[1] < r.lambda[2] )
-  # check n.lambda
-  stopifnot(
-    is.numeric(n.lambda) | n.lambda > 0 )
-  # check n.init
-  stopifnot(
-    is.numeric(n.init) | n.init > 0 )
-  # check n.iter
-  stopifnot(
-    is.numeric(n.iter) | n.iter > 0 )
-  # check CD.conv
-  stopifnot(
-    is.list(CD.conv) |
-      is.numeric(CD.conv$N) | CD.conv$N > 0 |
-      is.numeric(CD.conv$delta) | CD.conv$delta > 0 |
-      is.logical(CD.conv$logLik))
-  # hessian & adaptive
-  stopifnot(
-      is.logical(hessian) | is.logical(adaptive) )
+  IC.type <- match.arg(IC.type)
+  method <- match.arg(method)
 
-  switch(match.arg(method),
-         "grid" = {
-           stopifnot(n.lambda >= 1)
-         },
-         "MBO" = {
-           stopifnot(
-               n.init >  2 |
-               n.iter >= 1
-           )
-         })
+  if (!is.numeric(r.lambda) || length(r.lambda) != 2L ||
+      any(!is.finite(r.lambda)) || any(r.lambda <= 0) ||
+      r.lambda[1] >= r.lambda[2]) {
+    stop("'r.lambda' must contain two finite, positive, increasing values.",
+         call. = FALSE)
+  }
+
+  check_count <- function(x, name, minimum = 1L) {
+    if (!is.numeric(x) || length(x) != 1L || !is.finite(x) ||
+        x != floor(x) || x < minimum) {
+      stop(sprintf("'%s' must be a single integer greater than or equal to %d.",
+                   name, minimum), call. = FALSE)
+    }
+  }
+  check_count(n.lambda, "n.lambda")
+  check_count(n.init, "n.init", minimum = if (method == "MBO") 3L else 1L)
+  check_count(n.iter, "n.iter")
+
+  if (!is.list(CD.conv) ||
+      !all(c("N", "delta", "logLik") %in% names(CD.conv))) {
+    stop("'CD.conv' must be a list with 'N', 'delta', and 'logLik' elements.",
+         call. = FALSE)
+  }
+  check_count(CD.conv$N, "CD.conv$N")
+  if (!is.numeric(CD.conv$delta) || length(CD.conv$delta) != 1L ||
+      !is.finite(CD.conv$delta) || CD.conv$delta <= 0) {
+    stop("'CD.conv$delta' must be a single finite positive number.",
+         call. = FALSE)
+  }
+  if (!is.logical(CD.conv$logLik) || length(CD.conv$logLik) != 1L ||
+      is.na(CD.conv$logLik)) {
+    stop("'CD.conv$logLik' must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.logical(hessian) || length(hessian) != 1L || is.na(hessian)) {
+    stop("'hessian' must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.logical(adaptive) || length(adaptive) != 1L || is.na(adaptive)) {
+    stop("'adaptive' must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.null(parallel) && !is.list(parallel)) {
+    stop("'parallel' must be NULL or a list.", call. = FALSE)
+  }
+  if (!is.list(optim.args)) {
+    stop("'optim.args' must be a list.", call. = FALSE)
+  }
 
 
   list(
-    IC.type    = match.arg(IC.type),
-    method     = match.arg(method),
+    IC.type    = IC.type,
+    method     = method,
     r.lambda   = r.lambda,
     n.lambda   = n.lambda,
     n.init     = n.init,
@@ -509,7 +537,6 @@ SVC_selection_control <- function(
 #' @export
 #'
 #'
-#' @importFrom optimParallel optimParallel
 SVC_selection <- function(
   obj.fun,
   mle.par,
@@ -517,26 +544,52 @@ SVC_selection <- function(
   ...
 ) {
 
-  # dimensions
-  n <- nrow(obj.fun$args$X)
-  p <- ncol(obj.fun$args$X)
-  q <- length(obj.fun$args$outer.W)
-  
-  # Error handling
-  if (is(obj.fun, "SVC_obj_fun")) {
-    stop("The obj.fun argument must be of class 'SVC_obj_fun', see help file.")
+  if (!inherits(obj.fun, "SVC_obj_fun")) {
+    stop("'obj.fun' must be an object of class 'SVC_obj_fun'; see ?SVC_mle.",
+         call. = FALSE)
   }
-  
-  if (!is.numeric(mle.par) | (length(mle.par) != 2*q+1)) {
-    stop(paste0(
-      "The mle.par argument must be a numeric vector of length ", 2*q+1, "!"
-    ))
-  }
-  
 
-  
+  if (!is.list(obj.fun$args) ||
+      !is.function(obj.fun$obj_fun) ||
+      !is.matrix(obj.fun$args$X) ||
+      !is.list(obj.fun$args$outer.W)) {
+    stop("'obj.fun' is malformed: expected an objective function, a matrix 'X', ",
+         "and a list 'outer.W'.", call. = FALSE)
+  }
+
+  n <- nrow(obj.fun$args$X)
+  q <- length(obj.fun$args$outer.W)
+  if (n < 1L || q < 1L) {
+    stop("'obj.fun' must contain at least one observation and one random effect.",
+         call. = FALSE)
+  }
+
+  if (!is.numeric(mle.par) || length(mle.par) != 2L * q + 1L ||
+      any(!is.finite(mle.par))) {
+    stop(sprintf(
+      "'mle.par' must be a finite numeric vector of length %d.",
+      2L * q + 1L
+    ), call. = FALSE)
+  }
+
   if (is.null(control)) {
     control <- SVC_selection_control()
+  } else if (!is.list(control)) {
+    stop("'control' must be NULL or a list returned by SVC_selection_control().",
+         call. = FALSE)
+  } else {
+    control <- do.call(SVC_selection_control, control)
+  }
+
+  require_optional_dependencies("glmnet", "SVC variable selection")
+  if (!is.null(control$parallel)) {
+    require_optional_dependencies("optimParallel", "parallel optimization")
+  }
+  if (control$method == "MBO") {
+    require_optional_dependencies(
+      c("DiceKriging", "lhs", "mlr", "mlrMBO", "ParamHelpers", "smoof"),
+      "MBO lambda optimization"
+    )
   }
   
   # IC black-box function

@@ -7,7 +7,6 @@
 
 ## ---- help function to do MLE for SVC model ----
 #' @importFrom stats coef lm.fit median var
-#' @importFrom optimParallel optimParallel
 #' @importFrom parallel clusterExport clusterEvalQ
 MLE_computation <- function(
     y, X, locs, W, control, optim.control
@@ -16,6 +15,10 @@ MLE_computation <- function(
   # set new options while recording old to reset on exit
   oopts <- options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
   on.exit(options(oopts))
+
+  if (!is.null(control$parallel)) {
+    require_optional_dependencies("optimParallel", "parallel optimization")
+  }
   
   ## -- set important dimensions ----
   # number random effects and fixed effects
@@ -66,7 +69,7 @@ MLE_computation <- function(
     taper <-NULL
     outer.W <- lapply(1:q, function(k) W[, k]%o%W[, k])
   } else {
-    taper <- get_taper(control$cov.name, d, control$taper)
+    taper <- get_taper(control$cov.name, d, control$tapering)
     outer.W <- lapply(1:q, function(k) {
       (W[, k]%o%W[, k]) * taper
     })
@@ -320,7 +323,9 @@ create_SVC_mle <- function(
 #' @param parallel  (\code{NULL} or \code{list}) \cr
 #'    If \code{NULL}, no parallelization is applied. If cluster has been
 #'    established, define arguments for parallelization with a list, see
-#'    documentation of \code{\link[optimParallel]{optimParallel}}. See Examples.
+#'    documentation of \code{\link[optimParallel]{optimParallel}}. Parallel
+#'    optimization requires the optional package \code{optimParallel}. See
+#'    Examples.
 #' @param init  (\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
 #'    Initial values for optimization procedure. If \code{NULL} is given, an
 #'    initial vector is calculated (see Details). Otherwise, the vector is
@@ -500,17 +505,20 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #'   Dambon et al. (2021) \doi{10.1016/j.spasta.2020.100470}.
 #'
 #' @param y  (\code{numeric(n)}) \cr
-#'    Response vector.
+#'    Finite response vector with one value per observation.
 #' @param X  (\code{matrix(n, p)}) \cr
-#'    Design matrix. Intercept has to be added manually.
+#'    Finite numeric design matrix with one row per observation. An intercept
+#'    has to be added manually.
 #' @param locs  (\code{matrix(n, d)}) \cr
-#'    Locations in a \eqn{d}-dimensional space. May contain multiple
-#'    observations at single location.
+#'    Finite numeric locations with one row per observation in a
+#'    \eqn{d}-dimensional space. A vector represents one-dimensional
+#'    locations. Multiple observations may share a location.
 #' @param W  (\code{NULL} or \code{matrix(n, q)}) \cr
 #'    If \code{NULL}, the same matrix as provided in \code{X} is used. This
 #'    fits a full SVC model, i.e., each covariate effect is modeled with a mean
 #'    and an SVC. In this case we have \eqn{p = q}. If optional matrix \code{W}
-#'    is provided, SVCs are only modeled for covariates within matrix \code{W}.
+#'    is provided, it must be finite and have one row per observation; SVCs
+#'    are modeled only for its columns.
 #' @param control  (\code{list}) \cr
 #'    Control paramaters given by \code{\link{SVC_mle_control}}.
 #' @param optim.control  (\code{list}) \cr
@@ -638,7 +646,7 @@ SVC_mle_control.SVC_mle <- function(object, ...) {
 #' }
 #' @import spam
 #' @importFrom stats dist optim
-#' @importFrom optimParallel optimParallel
+
 #' @export
 SVC_mle <- function(...) UseMethod("SVC_mle")
 
@@ -663,6 +671,12 @@ SVC_mle.default <- function(
   if (is.null(control)) {
     control <- SVC_mle_control()
   }
+
+  inputs <- validate_svc_inputs(y, X, locs, W)
+  y <- inputs$y
+  X <- inputs$X
+  locs <- inputs$locs
+  W <- inputs$W
 
   # Start ML Estimation using optim
   ML_estimate <- MLE_computation(
@@ -712,6 +726,26 @@ SVC_mle.formula <- function(
     optim.control = list(), 
     ...
   ) {
+  if (!inherits(formula, "formula")) {
+    stop("'formula' must be a model formula.", call. = FALSE)
+  }
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame.", call. = FALSE)
+  }
+  if (length(formula) != 3L) {
+    stop("'formula' must include a response and a model term.", call. = FALSE)
+  }
+  response_name <- all.vars(formula)[1L]
+  if (is.na(response_name) || !nzchar(response_name) ||
+      is.null(data[[response_name]])) {
+    stop("The formula response must name a column in 'data'.", call. = FALSE)
+  }
+  y <- data[[response_name]]
+  if (!is.numeric(y) || !is.null(dim(y))) {
+    stop("The response column in 'data' must be a numeric vector.",
+         call. = FALSE)
+  }
+
   # extract model matrix
   X <- as.matrix(stats::model.matrix(formula, data = data))
   if (is.null(RE_formula)) {
@@ -721,6 +755,11 @@ SVC_mle.formula <- function(
     W <- as.matrix(stats::model.matrix(RE_formula, data = data))
   }
   y <- as.numeric(data[, all.vars(formula)[1], drop = TRUE])
+  inputs <- validate_svc_inputs(y, X, locs, W)
+  y <- inputs$y
+  X <- inputs$X
+  locs <- inputs$locs
+  W <- inputs$W
 
   # call SVC_mle with default control settings if non are provided
   if (is.null(control)) {
@@ -746,4 +785,3 @@ SVC_mle.formula <- function(
   class(object) <- "SVC_mle"
   return(object)
 }
-

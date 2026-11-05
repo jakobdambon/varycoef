@@ -48,7 +48,9 @@ i.e., set \code{cov.name} either to \code{"exp"}, \code{"mat32"}, or
 \item{parallel}{(\code{NULL} or \code{list}) \cr
 If \code{NULL}, no parallelization is applied. If cluster has been
 established, define arguments for parallelization with a list, see
-documentation of \code{\link[optimParallel]{optimParallel}}. See Examples.}
+documentation of \code{\link[optimParallel]{optimParallel}}. Parallel
+optimization requires the optional package \code{optimParallel}. See
+Examples.}
 
 \item{init}{(\code{NULL} or \code{numeric(2q+1+p*as.numeric(profileLik))}) \cr
 Initial values for optimization procedure. If \code{NULL} is given, an

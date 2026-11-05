@@ -41,3 +41,117 @@ test_that("SVC_mle call creates correct objects", {
   expect_identical(fit2_2$formula, y ~ X)
   expect_identical(fit2_2$RE_formula, ~ 1)
 })
+
+test_that("SVC_mle validates matrix inputs before fitting", {
+  y <- c(1, 2, 3)
+  X <- cbind(1, c(0, 1, 2))
+  locs <- c(0, 1, 2)
+
+  expect_error(SVC_mle(y[-1], X, locs), "'X' must have 2 rows")
+  expect_error(SVC_mle(y, X[, 1, drop = FALSE], locs,
+                       W = matrix(1:2, ncol = 1)), "'W' must have 3 rows")
+  expect_error(SVC_mle(y, X, locs[-1]), "'locs' must have 3 rows")
+  expect_error(SVC_mle(c(1, NA, 3), X, locs), "'y' must not contain")
+  expect_error(SVC_mle(y, cbind(X, Inf), locs), "'X' must not contain")
+  expect_error(SVC_mle(y, X, c(0, NaN, 2)), "'locs' must not contain")
+})
+
+test_that("formula SVC_mle validates the response and row alignment", {
+  data <- data.frame(y = c(1, 2, 3), x = 1:3)
+  locs <- 1:3
+
+  expect_error(
+    SVC_mle(y ~ x, data = transform(data, y = c(1, NA, 3)), locs = locs),
+    "'y' must not contain"
+  )
+  expect_error(
+    SVC_mle(y ~ x, data = data, locs = locs[-1]),
+    "'locs' must have 3 rows"
+  )
+  expect_error(
+    SVC_mle(y ~ x, data = list(y = 1:3, x = 1:3), locs = locs),
+    "'data' must be a data frame"
+  )
+})
+
+test_that("formula SVC_mle extracts a tibble response as a vector", {
+  skip_if_not_installed("tibble")
+
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  df <- data.frame(y = SVCdata$y[id], x = SVCdata$X[id, 2])
+  tbl <- tibble::as_tibble(df)
+  locs <- SVCdata$locs[id]
+  control <- SVC_mle_control(
+    profileLik = TRUE,
+    cov.name = "mat32"
+  )
+
+  fit_df <- SVC_mle(y ~ x, data = df, locs = locs, control = control)
+  fit_tbl <- SVC_mle(y ~ x, data = tbl, locs = locs, control = control)
+
+  expect_equal(coef(fit_tbl), coef(fit_df), tolerance = 1e-8)
+  expect_equal(cov_par(fit_tbl), cov_par(fit_df), tolerance = 1e-8)
+  expect_equal(fitted(fit_tbl)$y.pred, fitted(fit_df)$y.pred,
+               tolerance = 1e-8)
+})
+
+test_that("SVC_mle applies the configured covariance taper", {
+  data(SVCdata)
+  id <- seq_len(30)
+  tapering <- 2
+  expected_warning <- NULL
+  fit <- withCallingHandlers(
+    SVC_mle(
+      y = SVCdata$y[id],
+      X = SVCdata$X[id, , drop = FALSE],
+      locs = SVCdata$locs[id],
+      control = SVC_mle_control(
+        profileLik = TRUE,
+        cov.name = "mat32",
+        tapering = tapering,
+        init = c(0.2, 0.5, 0.2, 0.5, 0.2),
+        lower = rep(1e-6, 5L),
+        upper = rep(Inf, 5L),
+        hessian = FALSE
+      )
+    ),
+    warning = function(w) {
+      if (grepl("MLE without Hessian", conditionMessage(w), fixed = TRUE)) {
+        expected_warning <<- conditionMessage(w)
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+
+  expect_match(expected_warning, "MLE without Hessian")
+  expect_identical(attr(cov_par(fit), "tapering"), tapering)
+  expect_true(all(is.finite(coef(fit))))
+})
+
+test_that("matrix and formula fits agree on estimates and fitted values", {
+  data(SVCdata)
+  set.seed(123)
+  id <- sample(length(SVCdata$locs), 50)
+  y <- SVCdata$y[id]
+  X <- SVCdata$X[id, , drop = FALSE]
+  locs <- SVCdata$locs[id]
+  df <- data.frame(y = y, X = X[, 2])
+  control <- SVC_mle_control(
+    profileLik = TRUE,
+    cov.name = "mat32"
+  )
+
+  fit_matrix <- SVC_mle(y, X, locs, control = control)
+  fit_formula <- SVC_mle(y ~ X, data = df, locs = locs, control = control)
+
+  expect_equal(unname(coef(fit_matrix)), unname(coef(fit_formula)),
+               tolerance = 1e-8)
+  expect_equal(unname(cov_par(fit_matrix)), unname(cov_par(fit_formula)),
+               tolerance = 1e-8)
+  expect_equal(fitted(fit_matrix)$y.pred, fitted(fit_formula)$y.pred,
+               tolerance = 1e-8)
+  expect_equal(residuals(fit_matrix), residuals(fit_formula),
+               tolerance = 1e-8)
+})

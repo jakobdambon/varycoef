@@ -24,27 +24,32 @@ Select Information Criterion.}
 
 \item{method}{(\code{character(1)}) \cr
 Select optimization method for lambdas, i.e., shrinkage parameters.
-Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.}
+Either model-based optimization (MBO, Bischl et al., 2017 <arXiv:1703.03373>) or over grid.
+MBO requires the optional packages \code{mlrMBO}, \code{mlr},
+\code{ParamHelpers}, \code{smoof}, \code{lhs}, and \code{DiceKriging}.}
 
 \item{r.lambda}{(\code{numeric(2)}) \cr
-Range of lambdas, i.e., shrinkage parameters.}
+Finite, positive, increasing lower and upper bounds for the shrinkage
+parameters.}
 
 \item{n.lambda}{(\code{numeric(1)}) \cr
-If grid method is selected, number of lambdas per side of grid.}
+If the grid method is selected, the positive integer number of values
+per side of the grid.}
 
 \item{n.init}{(\code{numeric(1)}) \cr
-If MBO method is selected, number of initial values for surrogate model.}
+If the MBO method is selected, the integer number of initial design
+points; at least three are required.}
 
 \item{n.iter}{(\code{numeric(1)}) \cr
-If MBO method is selected, number of iteration steps of surrogate models.}
+If the MBO method is selected, the positive integer number of
+surrogate-model iterations.}
 
 \item{CD.conv}{(\code{list(3)}) \cr
-List containing the convergence conditions, i.e.,
-first entry is the maximum number of iterations,
-second value is the relative change necessary to stop iteration,
-third is logical to toggle if relative change in log likelihood
-(\code{TRUE}) or rather the parameters themselves (\code{FALSE})
-is the criteria for convergence.}
+Named list with positive integer \code{N}, finite positive \code{delta},
+and logical \code{logLik} elements. \code{N} is the maximum number of
+coordinate-descent iterations; \code{delta} is the relative convergence
+threshold; \code{logLik} selects convergence based on log-likelihood
+(\code{TRUE}) or parameter values (\code{FALSE}).}
 
 \item{hessian}{(\code{logical(1)}) \cr
 If \code{TRUE}, Hessian will be computed for final model.}
@@ -53,9 +58,11 @@ If \code{TRUE}, Hessian will be computed for final model.}
 If \code{TRUE}, adaptive LASSO is executed, i.e.,
 the shrinkage parameter is defined as \eqn{\lambda_j := \lambda / |\theta_j|}.}
 
-\item{parallel}{(\code{list}) \cr
-List with arguments for parallelization,
-see documentation of \code{\link[optimParallel]{optimParallel}}.}
+\item{parallel}{(\code{list} or \code{NULL}) \cr
+Arguments for parallel optimization, as documented in
+\code{\link[optimParallel]{optimParallel}}. If \code{NULL}, serial
+optimization is used. Parallel optimization requires the optional
+package \code{optimParallel}.}
 
 \item{optim.args}{(\code{list}) \cr
 List of further arguments of \code{\link[optimParallel]{optimParallel}},

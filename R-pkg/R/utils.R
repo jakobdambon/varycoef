@@ -91,13 +91,15 @@ GLS_chol.spam.chol.NgPeyton <- function(R, X, y) {
 #' @rdname GLS_chol
 #' @export
 GLS_chol.matrix <- function(R, X, y) {
-  RiX <- solve(t(R), X)
+  RiXY <- forwardsolve(t(R), cbind(X, y))
+  RiX <- RiXY[, seq_len(ncol(X)), drop = FALSE]
+  Riy <- RiXY[, ncol(RiXY)]
   # (X^T * Sigma^-1 * X)^-1
   solve(
     crossprod(RiX)
   ) %*%
     # (X^T * Sigma^-1 * y)
-    crossprod(RiX, solve(t(R), y))
+    crossprod(RiX, Riy)
 }
 
 
@@ -208,7 +210,7 @@ Sigma_y <- function(x, cov_func, outer.W, taper = NULL) {
     # if q > 1, build covariance matrix using components of other GPs
     if (q > 1) {
       for (k in 2:q) {
-        Cov <- do.call(cov_func, list(c(x[2*(k-1) + 1:2], 0)))
+        Cov <- cov_func(x[2*(k-1) + 1:2])
 
         Sigma <- Sigma + (Cov * outer.W[[k]])
       }
@@ -256,7 +258,7 @@ Sigma_y_y <- function(x, cov.func, X, newX) {
   Sigma <- matrix(0, ncol = nrow(X), nrow = nrow(newX))
 
   for (j in 1:p) {
-    Cov <- cov.func(c(x[2*(j-1) + 1:2], 0))
+    Cov <- cov.func(x[2*(j-1) + 1:2])
 
     Sigma <- Sigma + (
       Cov * (newX[, j] %o% X[, j])
@@ -395,6 +397,81 @@ init_bounds_optim <- function(control, p, q, id_obj, med_dist, y_var, OLS_mu) {
   return(list(lower = lower, init = init, upper = upper))
 }
 
+
+validate_svc_inputs <- function(y, X, locs, W = NULL) {
+  if (!is.numeric(y) || !is.null(dim(y)) || length(y) == 0L) {
+    stop("'y' must be a non-empty numeric vector.", call. = FALSE)
+  }
+  if (any(!is.finite(y))) {
+    stop("'y' must not contain missing or non-finite values.", call. = FALSE)
+  }
+
+  n <- length(y)
+  is_numeric_input <- function(x) {
+    is.numeric(x) ||
+      is.data.frame(x) && all(vapply(x, is.numeric, logical(1)))
+  }
+  as_numeric_matrix <- function(x, name) {
+    if (!is_numeric_input(x) ||
+        (!is.null(dim(x)) && !is.matrix(x) && !is.data.frame(x))) {
+      stop(sprintf("'%s' must be a numeric vector or matrix.", name),
+           call. = FALSE)
+    }
+    x <- as.matrix(x)
+    if (nrow(x) != n || ncol(x) < 1L) {
+      stop(sprintf("'%s' must have %d rows and at least one column.",
+                   name, n), call. = FALSE)
+    }
+    if (any(!is.finite(x))) {
+      stop(sprintf("'%s' must not contain missing or non-finite values.", name),
+           call. = FALSE)
+    }
+    x
+  }
+
+  X <- as_numeric_matrix(X, "X")
+  if (is.null(W)) {
+    W <- X
+  } else {
+    W <- as_numeric_matrix(W, "W")
+  }
+
+  if (!is_numeric_input(locs) ||
+      (!is.null(dim(locs)) && !is.matrix(locs) && !is.data.frame(locs))) {
+    stop("'locs' must be a numeric vector or matrix.", call. = FALSE)
+  }
+  locs <- as.matrix(locs)
+  if (nrow(locs) != n || ncol(locs) < 1L) {
+    stop(sprintf("'locs' must have %d rows and at least one column.", n),
+         call. = FALSE)
+  }
+  if (any(!is.finite(locs))) {
+    stop("'locs' must not contain missing or non-finite values.",
+         call. = FALSE)
+  }
+
+  list(y = as.numeric(y), X = X, locs = locs, W = W)
+}
+
+require_optional_dependencies <- function(
+  packages,
+  feature,
+  is_installed = function(package) requireNamespace(package, quietly = TRUE)
+) {
+  missing <- packages[
+    !vapply(packages, is_installed, logical(1))
+  ]
+  if (length(missing)) {
+    stop(
+      sprintf(
+        "%s requires these optional packages: %s. Install them with install.packages().",
+        feature,
+        paste(missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+}
 
 
 # Preparation of Parameter Output

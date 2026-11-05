@@ -18,21 +18,22 @@
 \item{object}{(\code{SVC_mle}) \cr
 Model obtained from \code{\link{SVC_mle}} function call.}
 
-\item{newlocs}{(\code{NULL} or \code{matrix(n.new, 2)}) \cr
+\item{newlocs}{(\code{NULL}, numeric vector, or \code{matrix(n.new, d)}) \cr
 If \code{NULL}, then function uses observed locations of model to estimate
-SVCs. Otherwise, these are the new locations the SVCs are predicted for.}
+SVCs. Otherwise, these are finite numeric locations with the same number
+of dimensions as the training locations.}
 
-\item{newX}{(\code{NULL} or \code{matrix(n.new, q)}) \cr
+\item{newX}{(\code{NULL}, numeric vector, or finite numeric \code{matrix(n.new, p)}) \cr
 If provided (together with \code{newW}), the function also returns the
 predicted response variable.}
 
-\item{newW}{(\code{NULL} or \code{matrix(n.new, p)}) \cr
+\item{newW}{(\code{NULL}, numeric vector, or finite numeric \code{matrix(n.new, q)}) \cr
 If provided (together with \code{newX}), the function also returns the
 predicted response variable.}
 
 \item{newdata}{(\code{NULL} or \code{data.frame(n.new, p)}) \cr
 This argument can be used, when the \code{SVC_mle} function has been called
-with an formula, see examples.}
+with a formula. It must have the same number of rows as \code{newlocs}.}
 
 \item{compute.y.var}{(\code{logical(1)}) \cr
 If \code{TRUE} and the response is being estimated, the predictive

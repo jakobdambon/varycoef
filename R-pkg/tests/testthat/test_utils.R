@@ -56,3 +56,18 @@ test_that("MLE.cov.func gets the right covariance functions", {
   
   expect_error(MLE.cov.func(2))
 })
+
+test_that("GLS_chol matrix solve matches the covariance formula", {
+  set.seed(321)
+  n <- 12L
+  A <- matrix(rnorm(n * n), nrow = n)
+  Sigma <- crossprod(A) + diag(n)
+  R <- chol(Sigma)
+  X <- cbind(1, rnorm(n), rnorm(n))
+  y <- rnorm(n)
+
+  expected <- solve(crossprod(X, solve(Sigma, X))) %*%
+    crossprod(X, solve(Sigma, y))
+
+  expect_equal(GLS_chol(R, X, y), expected, tolerance = 1e-10)
+})

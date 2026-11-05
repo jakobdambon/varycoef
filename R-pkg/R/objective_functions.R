@@ -46,7 +46,7 @@ n2LL <- function(
 
   ## quadratic form of residual, i.e., t(res) %*% Sigma^-1 %*% res
   quad_res <- if (is.matrix(cholS)) {
-    as.numeric(crossprod(solve(t(cholS), res)))
+    as.numeric(crossprod(forwardsolve(t(cholS), res)))
   } else {
     as.numeric(crossprod(spam::forwardsolve(cholS, res,
                                             transpose = TRUE,
