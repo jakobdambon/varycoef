@@ -619,6 +619,22 @@ own_dist <- function(x, y = NULL, taper = NULL, ...) {
   d
 }
 
+median_sparse_distance <- function(d) {
+  distances <- d@entries[is.finite(d@entries) & d@entries > 0]
+  if (!length(distances)) {
+    stop(
+      paste(
+        "Cannot initialize covariance ranges from tapered distances:",
+        "no non-zero pairwise distances are within the tapering range.",
+        "Provide explicit 'init', 'lower', and 'upper' values or increase",
+        "'tapering'."
+      ),
+      call. = FALSE
+    )
+  }
+  stats::median(distances)
+}
+
 get_taper <- function(cov.name, d, tapering) {
   switch(
     cov.name,

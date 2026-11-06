@@ -44,7 +44,7 @@ MLE_computation <- function(
     med_dist <- if (is.matrix(d)) {
       median(as.numeric(d))
     } else {
-      median(lower.tri(d@entries))
+      median_sparse_distance(d)
     }
     # variance of response
     y_var <- var(y)
