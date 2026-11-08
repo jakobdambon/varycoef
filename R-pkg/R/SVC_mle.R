@@ -7,7 +7,6 @@
 
 ## ---- help function to do MLE for SVC model ----
 #' @importFrom stats coef lm.fit median var
-#' @importFrom parallel clusterExport clusterEvalQ
 MLE_computation <- function(
     y, X, locs, W, control, optim.control
   ) {

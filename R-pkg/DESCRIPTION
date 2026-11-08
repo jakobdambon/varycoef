@@ -40,7 +40,6 @@ Suggests:
     mlrMBO,
     optimParallel (>= 0.8-1),
     ParamHelpers,
-    parallel,
     rmarkdown,
     smoof,
     sp,
