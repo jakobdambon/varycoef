@@ -71,3 +71,25 @@ test_that("GLS_chol matrix solve matches the covariance formula", {
 
   expect_equal(GLS_chol(R, X, y), expected, tolerance = 1e-10)
 })
+
+test_that("sparse distance initialization uses pairwise distances", {
+  locs <- matrix(1:6, ncol = 1)
+  distances <- spam::nearest.dist(locs, delta = 3)
+
+  expect_equal(varycoef:::median_sparse_distance(distances), 2)
+  expect_equal(
+    varycoef:::median_sparse_distance(
+      spam::nearest.dist(10 * locs, delta = 30)
+    ),
+    20
+  )
+})
+
+test_that("sparse distance initialization requires a retained pair", {
+  distances <- spam::nearest.dist(matrix(c(0, 10), ncol = 1), delta = 1)
+
+  expect_error(
+    varycoef:::median_sparse_distance(distances),
+    "no non-zero pairwise distances are within the tapering range"
+  )
+})
