@@ -1,3 +1,9 @@
+# varycoef 0.4.2
+
+## Improvements
+
+- Fixed objective extraction for formula-based `SVC_mle` calls.
+
 # varycoef 0.4.1
 
 ## Improvements

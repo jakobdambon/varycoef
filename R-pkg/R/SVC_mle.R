@@ -774,7 +774,12 @@ SVC_mle.formula <- function(
     control = control,
     optim.control = optim.control
   )
-  
+
+  if (is.function(ML_estimate$obj_fun)) {
+    class(ML_estimate) <- "SVC_obj_fun"
+    return(ML_estimate)
+  }
+
   # after optimization
   object <- create_SVC_mle(
     ML_estimate, y, X, W, locs, control,

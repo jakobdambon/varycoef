@@ -74,6 +74,38 @@ test_that("formula SVC_mle validates the response and row alignment", {
   )
 })
 
+test_that("formula and matrix calls extract equivalent objectives", {
+  data(SVCdata)
+  id <- seq_len(12)
+  df <- data.frame(y = SVCdata$y[id], x = SVCdata$X[id, 2])
+  X <- model.matrix(y ~ x, data = df)
+  locs <- SVCdata$locs[id]
+
+  for (profile in c(TRUE, FALSE)) {
+    control <- SVC_mle_control(extract_fun = TRUE, profileLik = profile)
+    for (random_formula in list(NULL, ~ 1)) {
+      W <- if (is.null(random_formula)) X else model.matrix(random_formula, df)
+      formula_obj <- SVC_mle(
+        y ~ x, data = df, RE_formula = random_formula, locs = locs,
+        control = control
+      )
+      matrix_obj <- SVC_mle(df$y, X, locs, W = W, control = control)
+      pars <- c(rep(c(0.5, 0.5), ncol(W)), 0.5)
+      if (!profile) pars <- c(pars, rep(0, ncol(X)))
+
+      expect_s3_class(formula_obj, "SVC_obj_fun")
+      expect_identical(names(formula_obj), c("obj_fun", "args"))
+      expect_equal(formula_obj$args$X, matrix_obj$args$X)
+      expect_equal(formula_obj$args$W, matrix_obj$args$W)
+      expect_equal(
+        do.call(formula_obj$obj_fun, c(list(x = pars), formula_obj$args)),
+        do.call(matrix_obj$obj_fun, c(list(x = pars), matrix_obj$args)),
+        tolerance = 1e-10
+      )
+    }
+  }
+})
+
 test_that("formula SVC_mle extracts a tibble response as a vector", {
   skip_if_not_installed("tibble")
 

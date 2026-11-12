@@ -94,3 +94,31 @@ test_that("SVC_selection accepts a valid extracted objective", {
   expect_length(fit$lambda, 2L)
   expect_true(is.finite(fit$PMLE_pars$final.IC))
 })
+
+test_that("SVC_selection accepts an objective extracted from a formula", {
+  skip_if_not_installed("glmnet")
+  data(SVCdata)
+  id <- seq_len(12)
+  df <- data.frame(y = SVCdata$y[id], x = SVCdata$X[id, 2])
+  obj <- SVC_mle(
+    y ~ x, data = df, RE_formula = ~ 1, locs = SVCdata$locs[id],
+    control = SVC_mle_control(extract_fun = TRUE, profileLik = TRUE)
+  )
+  fit <- SVC_selection(
+    obj,
+    mle.par = c(0.5, 0.5, 0.5),
+    control = SVC_selection_control(
+      r.lambda = c(1e-4, 1e-3),
+      n.lambda = 1L,
+      CD.conv = list(N = 1L, delta = 1e-4, logLik = TRUE),
+      optim.args = list(
+        lower = rep(1e-6, 3L),
+        upper = rep(Inf, 3L),
+        control = list(maxit = 5L)
+      )
+    )
+  )
+
+  expect_s3_class(fit, "SVC_selection")
+  expect_true(is.finite(fit$PMLE_pars$final.IC))
+})
