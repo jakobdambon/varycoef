@@ -12,8 +12,8 @@ MLE_computation <- function(
   ) {
   
   # set new options while recording old to reset on exit
-  oopts <- options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
-  on.exit(options(oopts))
+  old_options <- options(spam.trivalues = TRUE, spam.cholsymmetrycheck = FALSE)
+  on.exit(options(old_options))
 
   if (!is.null(control$parallel)) {
     require_optional_dependencies("optimParallel", "parallel optimization")
@@ -48,54 +48,54 @@ MLE_computation <- function(
     # variance of response
     y_var <- var(y)
     # fixed effects estimates by ordinary least squares (OLS)
-    OLS_mu <- coef(lm.fit(x = X, y = y))
+    ols_mean <- coef(lm.fit(x = X, y = y))
   } else {
-    med_dist <- y_var <- OLS_mu <- NULL
+    med_dist <- y_var <- ols_mean <- NULL
   }
   # liu - _L_ower _I_nit _U_pper
-  liu <- init_bounds_optim(control, p, q, id_obj, med_dist, y_var, OLS_mu)
+  liu <- init_bounds_optim(control, p, q, id_obj, med_dist, y_var, ols_mean)
 
   ## -- define distance matrices, covariance functions, and taper matrix -----
   # get covariance function
-  raw.cov.func <- MLE.cov.func(control$cov.name)
+  raw_cov_func <- MLE.cov.func(control$cov.name)
 
   # covariance function
-  cov.func <- function(x) raw.cov.func(d, x)
+  covariance_func <- function(x) raw_cov_func(d, x)
 
-  Rstruct <- NULL
+  chol_structure <- NULL
   # tapering?
   if (is.null(control$tapering)) {
     taper <-NULL
-    outer.W <- lapply(1:q, function(k) W[, k]%o%W[, k])
+    outer_products <- lapply(1:q, function(k) W[, k]%o%W[, k])
   } else {
     taper <- get_taper(control$cov.name, d, control$tapering)
-    outer.W <- lapply(1:q, function(k) {
+    outer_products <- lapply(1:q, function(k) {
       (W[, k]%o%W[, k]) * taper
     })
     
-    Sigma1 <- Sigma_y(
+    initial_covariance <- Sigma_y(
       x = liu$init[id_cov],
-      cov_func = cov.func,
-      outer.W = outer.W,
+      cov_func = covariance_func,
+      outer.W = outer_products,
       taper = taper
     )
-    Rstruct <- spam::chol.spam(Sigma1)
+    chol_structure <- spam::chol.spam(initial_covariance)
   }
 
   ## -- pc priors -----
   # ordering: pcp = c(\rho_0, \alpha_\rho, \sigma_0, \alpha_\sigma)
-  pcp.neg2dens <- if (is.null(control$pc.prior)) {
+  pc_prior_penalty <- if (is.null(control$pc.prior)) {
     NULL
   } else {
     pcp <- control$pc.prior
 
-    lambda.r <- -log(pcp[2])*2*pcp[1]
-    lambda.s <- -log(pcp[4])/pcp[3]
+    lambda_range <- -log(pcp[2])*2*pcp[1]
+    lambda_sd <- -log(pcp[4])/pcp[3]
 
     # for Matérn GRF (-2 * log( pc prior dens))
     function(theta) {
       4*log(theta[1]) +
-        lambda.r/theta[1]+2*lambda.s*sqrt(theta[2])
+        lambda_range/theta[1]+2*lambda_sd*sqrt(theta[2])
     }
 
   }
@@ -103,7 +103,7 @@ MLE_computation <- function(
 
   # how to compute mu if optimization is over porfile likelihood
   # prepare for optimization by computing mean effect
-  mu.estimate <- if (control$mean.est == "GLS") {
+  mean_estimate <- if (control$mean.est == "GLS") {
     NULL
   } else { # Ordinary Least Squares
     coef(lm.fit(x = X, y = y))
@@ -115,15 +115,15 @@ MLE_computation <- function(
     obj_fun <- function(x, ...)
       n2LL(x, ...)
     args <- list(
-      cov_func = cov.func,
-      outer.W  = outer.W,
+      cov_func = covariance_func,
+      outer.W  = outer_products,
       y        = y,
       X        = X,
       W        = W,
-      mean.est = mu.estimate,
+      mean.est = mean_estimate,
       taper    = taper,
-      pc.dens  = pcp.neg2dens,
-      Rstruct  = Rstruct,
+      pc.dens  = pc_prior_penalty,
+      Rstruct  = chol_structure,
       profile  = control$profileLik
     )
 
@@ -144,19 +144,19 @@ MLE_computation <- function(
   ## -- optimization -----
   if (is.null(control$parallel)) {
     # ... without parallelization
-    optim.output <- stats::optim(
+    optim_result <- stats::optim(
       par     = liu$init[id_obj],
       fn      = n2LL,
       # arguments of 2nLL
-        cov_func = cov.func,
-        outer.W  = outer.W,
+        cov_func = covariance_func,
+        outer.W  = outer_products,
         y        = y,
         X        = X,
         W        = W,
-        mean.est = mu.estimate,
+        mean.est = mean_estimate,
         taper    = taper,
-        pc.dens  = pcp.neg2dens,
-        Rstruct  = Rstruct,
+        pc.dens  = pc_prior_penalty,
+        Rstruct  = chol_structure,
         profile  = control$profileLik,
       method  = "L-BFGS-B",
       lower   = liu$lower[id_obj],
@@ -179,19 +179,19 @@ MLE_computation <- function(
       envir = environment()
     )
 
-    optim.output <- optimParallel::optimParallel(
+    optim_result <- optimParallel::optimParallel(
       par     = liu$init[id_obj],
       fn      = n2LL,
       # arguments of 2nLL
-        cov_func = cov.func,
-        outer.W  = outer.W,
+        cov_func = covariance_func,
+        outer.W  = outer_products,
         y        = y,
         X        = X,
         W        = W,
-        mean.est = mu.estimate,
+        mean.est = mean_estimate,
         taper    = taper,
-        pc.dens  = pcp.neg2dens,
-        Rstruct  = Rstruct,
+        pc.dens  = pc_prior_penalty,
+        Rstruct  = chol_structure,
         profile  = control$profileLik,
       lower   = liu$lower[id_obj],
       upper   = liu$upper[id_obj],
@@ -203,20 +203,20 @@ MLE_computation <- function(
 
   ## -- Estimates and Standard errors -----
   # compute covariance matrices
-  Sigma_final <- Sigma_y(
-    optim.output$par[id_cov], cov.func, outer.W, taper = taper
+  final_covariance <- Sigma_y(
+    optim_result$par[id_cov], covariance_func, outer_products, taper = taper
   )
 
-  par_SE <- prep_par_output(
-    optim.output$par, Sigma_final, Rstruct, control$profileLik, X, y,
-    optim.output$hessian, q
+  parameter_estimates <- prep_par_output(
+    optim_result$par, final_covariance, chol_structure, control$profileLik,
+    X, y, optim_result$hessian, q
   )
 
   # effective degrees of freedom
   edof <- eff_dof(
-    cov.par  = par_SE$RE$est,
-    cov_func = cov.func,
-    outer.W  = outer.W,
+    cov.par  = parameter_estimates$RE$est,
+    cov_func = covariance_func,
+    outer.W  = outer_products,
     X        = X,
     taper    = taper
   )
@@ -224,7 +224,7 @@ MLE_computation <- function(
   # preparing output
   return(
     list(
-      optim.output = optim.output,
+      optim.output = optim_result,
       call.args = list(
         y = as.numeric(y),
         X = as.matrix(X),
@@ -236,25 +236,25 @@ MLE_computation <- function(
       comp.args = list(
         liu         = liu,
         edof        = edof,
-        Sigma_final = Sigma_final,
-        par_SE      = par_SE
+        Sigma_final = final_covariance,
+        par_SE      = parameter_estimates
       )
     )
   )
 }
 
 ## ---- help function to compute fitted values after MLE ----
-fitted_computation <- function(SVC_obj, y, X, W, locs) {
-  class(SVC_obj) <- "SVC_mle"
+fitted_computation <- function(svc_object, y, X, W, locs) {
+  class(svc_object) <- "SVC_mle"
 
 
-  predict.SVC_mle(SVC_obj, newlocs = locs, newX = X, newW = W)
+  predict.SVC_mle(svc_object, newlocs = locs, newX = X, newW = W)
 
 }
 
 ## ---- help function to construct SVC_mle object ----
 create_SVC_mle <- function(
-    ML_estimate, 
+    ml_estimate,
     y, 
     X, 
     W, 
@@ -267,20 +267,20 @@ create_SVC_mle <- function(
   q <- dim(W)[2]
 
   # extract covariance parameters and coefficients for methods
-  cov.par <- ML_estimate$comp.args$par_SE$RE$est
-  mu <- ML_estimate$comp.args$par_SE$FE$est
+  covariance_parameters <- ml_estimate$comp.args$par_SE$RE$est
+  mu <- ml_estimate$comp.args$par_SE$FE$est
 
   # non zero parameters, i.e., means or variances
-  df <- sum(abs(c(mu, cov.par[2*(1:q)])) > 1e-10)
+  df <- sum(abs(c(mu, covariance_parameters[2*(1:q)])) > 1e-10)
 
-  SVC_obj <- list(
-    MLE          = ML_estimate,
+  svc_object <- list(
+    MLE          = ml_estimate,
     coefficients = mu,
-    cov.par      = cov.par,
+    cov.par      = covariance_parameters,
     # (effective) degrees of freedom
     df = list(
       df = as.integer(df),
-      edof = ML_estimate$comp.args$edof),
+      edof = ml_estimate$comp.args$edof),
     fitted = NULL,
     residuals = NULL,
     data = list(y = y, X = X, W = W, locs = locs),
@@ -291,13 +291,13 @@ create_SVC_mle <- function(
 
   if (control$save.fitted) {
     # compute fitted values (i.e. EBLUP = empirical BLUP)
-    pred <- fitted_computation(SVC_obj, y, X, W, locs)
+    pred <- fitted_computation(svc_object, y, X, W, locs)
 
-    SVC_obj$fitted = pred
-    SVC_obj$residuals = y-pred$y.pred
+    svc_object$fitted = pred
+    svc_object$residuals = y-pred$y.pred
   }
 
-  return(SVC_obj)
+  return(svc_object)
 }
 
 
@@ -678,7 +678,7 @@ SVC_mle.default <- function(
   W <- inputs$W
 
   # Start ML Estimation using optim
-  ML_estimate <- MLE_computation(
+  ml_estimate <- MLE_computation(
     y = y,
     X = X,
     locs = locs,
@@ -687,15 +687,15 @@ SVC_mle.default <- function(
     optim.control = optim.control
   )
 
-  if (is.function(ML_estimate$obj_fun)) {
+  if (is.function(ml_estimate$obj_fun)) {
     # extract objective function
-    object <- ML_estimate
+    object <- ml_estimate
     class(object) <- "SVC_obj_fun"
     return(object)
   } else {
     # after optimization
     object <- create_SVC_mle(
-      ML_estimate, y, X, W, locs, control,
+      ml_estimate, y, X, W, locs, control,
       formula = NULL, RE_formula = NULL
     )
     object$call <- match.call()
@@ -766,7 +766,7 @@ SVC_mle.formula <- function(
   }
   
   # Start ML Estimation using optim
-  ML_estimate <- MLE_computation(
+  ml_estimate <- MLE_computation(
     y = y,
     X = X,
     locs = locs,
@@ -775,14 +775,14 @@ SVC_mle.formula <- function(
     optim.control = optim.control
   )
 
-  if (is.function(ML_estimate$obj_fun)) {
-    class(ML_estimate) <- "SVC_obj_fun"
-    return(ML_estimate)
+  if (is.function(ml_estimate$obj_fun)) {
+    class(ml_estimate) <- "SVC_obj_fun"
+    return(ml_estimate)
   }
 
   # after optimization
   object <- create_SVC_mle(
-    ML_estimate, y, X, W, locs, control,
+    ml_estimate, y, X, W, locs, control,
     formula = formula, RE_formula = RE_formula
   )
   object$call <- match.call()

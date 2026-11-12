@@ -17,12 +17,12 @@
 coef.SVC_mle <- function(object, ...) {
   mu <- as.numeric(object$coefficients)
 
-  X.vars <- colnames(object$data$X)
+  fixed_effect_names <- colnames(object$data$X)
 
-  names(mu) <- if (is.null(X.vars)) {
+  names(mu) <- if (is.null(fixed_effect_names)) {
     paste0("Var", 1:length(mu))
   } else {
-    X.vars
+    fixed_effect_names
   }
 
   mu
@@ -34,12 +34,12 @@ coef.SVC_mle <- function(object, ...) {
 coef.SVC_selection <- function(object, ...) {
   mu <- as.numeric(tail(na.omit(object$PMLE_pars$mu.par), 1))
 
-  X.vars <- colnames(object$obj.fun$args$X)
+  fixed_effect_names <- colnames(object$obj.fun$args$X)
 
-  names(mu) <- if (is.null(X.vars)) {
+  names(mu) <- if (is.null(fixed_effect_names)) {
     paste0("Var", 1:length(mu))
   } else {
-    X.vars
+    fixed_effect_names
   }
 
   mu

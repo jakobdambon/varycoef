@@ -7,9 +7,9 @@ VB_pen <- function(x, X, cov_func, outer.W, taper) {
   n <- nrow(X)
   p <- ncol(X)
   q <- length(outer.W)
-  eff.dof <- eff_dof(x, X, cov_func, outer.W, taper)
+  effective_dof <- eff_dof(x, X, cov_func, outer.W, taper)
 
-  (2*n)/(n-p-2)*(eff.dof + 1 - (eff.dof - p)/(n-p))
+  (2*n)/(n-p-2)*(effective_dof + 1 - (effective_dof - p)/(n-p))
 }
 
 
@@ -26,22 +26,22 @@ CD_mu <- function(
 
   ## transform from GLS to OLS
   # compute covariance matrix and Cholesky-decomp thereof
-  C.mat <- Sigma_y(theta.k, obj.fun$args$cov_func, obj.fun$args$outer.W)
-  R <- spam::chol(C.mat)
+  covariance <- Sigma_y(theta.k, obj.fun$args$cov_func, obj.fun$args$outer.W)
+  R <- spam::chol(covariance)
   transformed <- spam::forwardsolve(
     R,
     cbind(obj.fun$args$y, obj.fun$args$X)
   )
-  y.tilde <- transformed[, 1]
-  X.tilde <- transformed[, -1, drop = FALSE]
+  whitened_y <- transformed[, 1]
+  whitened_x <- transformed[, -1, drop = FALSE]
 
   # MLE / OLS estimate
-  # mu.MLE <- coef(lm(y.tilde~X.tilde-1))
+  # mu.MLE <- coef(lm(whitened_y~whitened_x-1))
 
   ## run (adaptive) LASSO
-  LASSO <- glmnet::glmnet(
-    y = y.tilde,
-    x = X.tilde,
+  lasso_fit <- glmnet::glmnet(
+    y = whitened_y,
+    x = whitened_x,
     lambda = lambda.mu,
     alpha = 1,
     intercept = FALSE,
@@ -53,7 +53,7 @@ CD_mu <- function(
   )
 
   # without 0 for intercept
-  as.numeric(coef(LASSO))[1+(1:p)]
+  as.numeric(coef(lasso_fit))[1+(1:p)]
 }
 
 CD_theta <- function(
@@ -156,10 +156,10 @@ PMLE_CD <- function(
   c.par[1, ] <- mle.par
   # mean parameter
   mu.par <- matrix(NA_real_, nrow = CD.conv$N + 1, ncol = p)
-  I.C.mat <- solve(
+  inverse_covariance <- solve(
     Sigma_y(mle.par, obj.fun$args$cov_func, obj.fun$args$outer.W)
   )
-  B <- crossprod(obj.fun$args$X, I.C.mat)
+  B <- crossprod(obj.fun$args$X, inverse_covariance)
   mu.par[1, ] <- solve(B %*% obj.fun$args$X) %*% B %*% obj.fun$args$y
   # log-likelihood
   loglik.CD <- rep(NA_real_, CD.conv$N + 1)

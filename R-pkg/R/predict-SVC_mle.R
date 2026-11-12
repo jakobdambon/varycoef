@@ -103,7 +103,7 @@ predict.SVC_mle <- function(
   locs <- as.matrix(object$MLE$call.args$locs)
   tapering <- object$MLE$call.args$control$tapering
   dist_args <- object$MLE$call.args$control$dist
-  nloc.dim <- ncol(locs)
+  location_dimensions <- ncol(locs)
 
   # define distance matrices
   d <- do.call(
@@ -115,27 +115,27 @@ predict.SVC_mle <- function(
   if (is.null(newlocs)) {
     newlocs <- locs
     d_cross <- d
-    n.new <- n
+    n_new <- n
   } else {
-    numeric.data.frame <- is.data.frame(newlocs) &&
+    numeric_data_frame <- is.data.frame(newlocs) &&
       all(vapply(newlocs, is.numeric, logical(1)))
-    if ((!is.numeric(newlocs) && !numeric.data.frame) ||
+    if ((!is.numeric(newlocs) && !numeric_data_frame) ||
         (!is.null(dim(newlocs)) && !is.matrix(newlocs) &&
           !is.data.frame(newlocs))) {
       stop("'newlocs' must be a numeric vector or matrix.", call. = FALSE)
     }
     newlocs <- as.matrix(newlocs)
-    if (nrow(newlocs) < 1L || ncol(newlocs) != nloc.dim) {
+    if (nrow(newlocs) < 1L || ncol(newlocs) != location_dimensions) {
       stop(sprintf(
         "'newlocs' must have at least one row and %d location column(s).",
-        nloc.dim
+        location_dimensions
       ), call. = FALSE)
     }
     if (any(!is.finite(newlocs))) {
       stop("'newlocs' must not contain missing or non-finite values.",
            call. = FALSE)
     }
-    n.new <- nrow(newlocs)
+    n_new <- nrow(newlocs)
     d_cross <- do.call(
       own_dist,
       c(list(x = newlocs, y = locs, taper = tapering), dist_args)
@@ -143,13 +143,13 @@ predict.SVC_mle <- function(
   }
 
   # covariance function (not tapered)
-  raw.cf <- MLE.cov.func(object$MLE$call.args$control$cov.name)
+  raw_cov_func <- MLE.cov.func(object$MLE$call.args$control$cov.name)
 
   if (is.null(object$MLE$call.args$control$taper)) {
     taper <- NULL
 
     # cross-covariance (newlocs and locs)
-    cf_cross <- function(x) raw.cf(d_cross, x)
+    cf_cross <- function(x) raw_cov_func(d_cross, x)
 
   } else {
     taper <- get_taper(
@@ -161,11 +161,11 @@ predict.SVC_mle <- function(
     )
 
     # cross-covariance (newlocs and locs)
-    cf_cross <- function(x) raw.cf(d_cross, x)*taper_cross
+    cf_cross <- function(x) raw_cov_func(d_cross, x)*taper_cross
   }
 
   # covariance y
-  cf <- function(x) raw.cf(d, x)
+  cf <- function(x) raw_cov_func(d, x)
   cov_y <- object$MLE$comp.args$Sigma_final
 
 
@@ -174,7 +174,7 @@ predict.SVC_mle <- function(
     x = cov.par,
     cov.func = cf_cross,
     W = as.matrix(object$MLE$call.args$W),
-    n.new = n.new
+    n.new = n_new
   )
 
   eff <- cov_b_y %*%
@@ -187,7 +187,7 @@ predict.SVC_mle <- function(
     if (!is.data.frame(newdata)) {
       stop("'newdata' must be a data frame.", call. = FALSE)
     }
-    if (nrow(newdata) != n.new) {
+    if (nrow(newdata) != n_new) {
       stop("'newdata' and 'newlocs' must have the same number of rows.",
            call. = FALSE)
     }
@@ -224,19 +224,19 @@ predict.SVC_mle <- function(
     if (is.null(dim(newW))) {
       newW <- matrix(newW, ncol = 1L)
     }
-    if (nrow(newX) != n.new || ncol(newX) != p) {
-      stop(sprintf("'newX' must have %d rows and %d columns.", n.new, p),
+    if (nrow(newX) != n_new || ncol(newX) != p) {
+      stop(sprintf("'newX' must have %d rows and %d columns.", n_new, p),
            call. = FALSE)
     }
-    if (nrow(newW) != n.new || ncol(newW) != q) {
-      stop(sprintf("'newW' must have %d rows and %d columns.", n.new, q),
+    if (nrow(newW) != n_new || ncol(newW) != q) {
+      stop(sprintf("'newW' must have %d rows and %d columns.", n_new, q),
            call. = FALSE)
     }
     if (any(!is.finite(newX)) || any(!is.finite(newW))) {
       stop("'newX' and 'newW' must not contain missing or non-finite values.",
            call. = FALSE)
     }
-    y.pred <- apply(newW * eff, 1, sum) + newX %*% mu
+    y_pred <- apply(newW * eff, 1, sum) + newX %*% mu
 
     # computation of standard deviation fro each observation.
     if (compute.y.var) {
@@ -259,7 +259,7 @@ predict.SVC_mle <- function(
       )
 
       # Part A:
-      d_new <- if (n.new == 1) {
+      d_new <- if (n_new == 1) {
         as.matrix(0)
       } else {
         do.call(
@@ -269,7 +269,7 @@ predict.SVC_mle <- function(
       }
 
       if (is.null(tapering)) {
-        outer.newW <- lapply(1:q, function(k) {
+        outer_new_w <- lapply(1:q, function(k) {
           (newW[, k]%o%newW[, k]) })
         taper_new <- NULL
       } else {
@@ -277,31 +277,31 @@ predict.SVC_mle <- function(
           object$MLE$call.args$control$cov.name, d_new, tapering
         )
 
-        outer.newW <- lapply(1:q, function(k) {
+        outer_new_w <- lapply(1:q, function(k) {
           (newW[, k]%o%newW[, k]) * taper_new
         })
       }
 
       # cross-covariance (newlocs and locs)
-      cf_new <- function(x) raw.cf(d_new, x)
+      cf_new <- function(x) raw_cov_func(d_new, x)
 
       cov_ynew <- Sigma_y(
         cov.par,
         cf_new,
-        outer.W = outer.newW,
+        outer.W = outer_new_w,
         taper = taper_new
       )
 
       # Part C: already calculated with cov_y
 
       # Computation of variance of y
-      var.y <- diag(cov_ynew) - diag(cov_ynew_y %*% solve(cov_y, t(cov_ynew_y)))
+      y_var <- diag(cov_ynew) - diag(cov_ynew_y %*% solve(cov_y, t(cov_ynew_y)))
 
       # form out put
-      out <- as.data.frame(cbind(eff, y.pred, var.y, newlocs))
+      out <- as.data.frame(cbind(eff, y_pred, y_var, newlocs))
       colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", "y.var", paste0("loc_", 1:ncol(newlocs)))
     } else {
-      out <- as.data.frame(cbind(eff, y.pred, newlocs))
+      out <- as.data.frame(cbind(eff, y_pred, newlocs))
       colnames(out) <- c(paste0("SVC_", 1:ncol(eff)), "y.pred", paste0("loc_", 1:ncol(newlocs)))
     }
 
