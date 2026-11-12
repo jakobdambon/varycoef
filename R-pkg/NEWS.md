@@ -1,3 +1,9 @@
+# varycoef 0.4.1
+
+## Improvements
+
+- Removed the `parallel` import.
+
 # varycoef 0.4.0
 
 ## Improvements
