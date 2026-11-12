@@ -80,26 +80,26 @@ GLS_chol <- function(R, X, y) UseMethod("GLS_chol")
 #' @importFrom spam forwardsolve backsolve
 #' @export
 GLS_chol.spam.chol.NgPeyton <- function(R, X, y) {
-  # (X^T * Sigma^-1 * X)^-1
+  # computes (X^T * Sigma^-1 * X)^-1 # nolint
   solve(
     crossprod(spam::forwardsolve(R, X))
   ) %*%
-    # (X^T * Sigma^-1 * y)
+    # computes (X^T * Sigma^-1 * y) # nolint
     crossprod(X, spam::backsolve(R, spam::forwardsolve(R, y)))
 }
 
 #' @rdname GLS_chol
 #' @export
 GLS_chol.matrix <- function(R, X, y) {
-  RiXY <- forwardsolve(t(R), cbind(X, y))
-  RiX <- RiXY[, seq_len(ncol(X)), drop = FALSE]
-  Riy <- RiXY[, ncol(RiXY)]
+  whitened_data <- forwardsolve(t(R), cbind(X, y))
+  whitened_x <- whitened_data[, seq_len(ncol(X)), drop = FALSE]
+  whitened_y <- whitened_data[, ncol(whitened_data)]
   # (X^T * Sigma^-1 * X)^-1
   solve(
-    crossprod(RiX)
+    crossprod(whitened_x)
   ) %*%
     # (X^T * Sigma^-1 * y)
-    crossprod(RiX, Riy)
+    crossprod(whitened_x, whitened_y)
 }
 
 

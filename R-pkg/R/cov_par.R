@@ -25,13 +25,14 @@ cov_par <- function(...) UseMethod("cov_par")
 cov_par.SVC_mle <- function(object, ...) {
   covpars <- as.numeric(object$cov.par)
 
-  W.vars <- colnames(object$data$W)
+  random_effect_names <- colnames(object$data$W)
 
-  names(covpars) <- if (is.null(W.vars)) {
+  names(covpars) <- if (is.null(random_effect_names)) {
     c(paste0(rep(paste0("SVC", 1:((length(covpars)-1)/2)), each = 2),
              c(".range", ".var")), "nugget.var")
   } else {
-    c(paste0(rep(W.vars, each = 2), c(".range", ".var")), "nugget.var")
+    c(paste0(rep(random_effect_names, each = 2), c(".range", ".var")),
+      "nugget.var")
   }
 
   attr(covpars, "cov_fun") <- object$MLE$call.args$control$cov.name
@@ -47,13 +48,14 @@ cov_par.SVC_mle <- function(object, ...) {
 cov_par.SVC_selection <- function(object, ...) {
   covpars <- as.numeric(tail(na.omit(object$PMLE_pars$c.par), 1))
 
-  W.vars <- colnames(object$obj.fun$args$W)
+  random_effect_names <- colnames(object$obj.fun$args$W)
 
-  names(covpars) <- if (is.null(W.vars)) {
+  names(covpars) <- if (is.null(random_effect_names)) {
     c(paste0(rep(paste0("SVC", 1:((length(covpars)-1)/2)), each = 2),
              c(".range", ".var")), "nugget.var")
   } else {
-    c(paste0(rep(W.vars, each = 2), c(".range", ".var")), "nugget.var")
+    c(paste0(rep(random_effect_names, each = 2), c(".range", ".var")),
+      "nugget.var")
   }
 
   attr(covpars, "cov_fun") <- attr(object$mle.par, "cov_fun")
